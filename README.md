@@ -5,6 +5,10 @@ well as some basic IO functions. The goal of this package is to provide the mode
 statements, graphs and datasets in-memory. Additional Racket packages provide capabilities layered on top of this such
 as support for OWL and SPARQL and additional vocabularies.
 
+[Racket Package Directory](https://pkgd.racket-lang.org/pkgn/package/rdf-core)
+[Github](https://github.com/johnstonskj/racket-rdf-core)
+
+
 ## Example
 
 The following shows the construction of a *default* (unnamed) graph with a simple set of statements. This is followed by a

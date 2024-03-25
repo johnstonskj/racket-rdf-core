@@ -3,6 +3,7 @@
 (require (for-syntax racket/base racket/syntax syntax/transformer)
          racket/bool
          racket/contract
+         racket/list
          racket/port
          racket/string
          ;; --------------------------------------
@@ -219,22 +220,19 @@
 ;; Printing statement patterns
 ;; -------------------------------------------------------------------------------------------------
 
-(define (write-match-op pattern (out (current-output-port)))
+(define (write-match-component pattern (out (current-output-port)))
   (cond
-    ((symbol=? (match-op-kind pattern) 'ignore)
-     (display "_" out))
-    ((symbol=? (match-op-kind pattern) 'value)
-     (write-turtle-subject (match-op-value pattern) out))
-    ((symbol=? (match-op-kind pattern) 'variable)
-     (fprintf out "?~a" (match-op-value pattern)))))
+    ((ignore? pattern) (display "_" out))
+    ((comparitor? pattern) (write-turtle-object (car pattern) out))
+    ((variable? pattern) (fprintf out "?~a" pattern))))
 
 (define (write-statement-pattern pattern (out (current-output-port)))
   ;;(-> statement-pattern? output-port? void?)
-  (write-match-op (statement-pattern-subject pattern) out)
+  (write-match-component (first pattern) out)
   (write-inner-whitespace out)
-  (write-match-op (statement-pattern-predicate pattern) out)
+  (write-match-component (second pattern) out)
   (write-inner-whitespace out)
-  (write-match-op (statement-pattern-object pattern) out)
+  (write-match-component (third pattern) out)
   (write-end-of-statement out))
 
 (writer->to-string statement-pattern)

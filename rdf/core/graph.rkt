@@ -15,7 +15,9 @@
          "./namespace.rkt" ;; for tests only
          "./statement.rkt"
          (prefix-in sd: (except-in "./v/sd.rkt" *namespace*))
-         (prefix-in void: (except-in "./v/void.rkt" *namespace*)))
+         (prefix-in void:
+                    (except-in "./v/void.rkt" *namespace*))
+         (rename-in "./v/void.rkt" (*namespace* void:)))
 
 (provide (except-out (struct-out graph)
                      internal-make-graph)
@@ -45,7 +47,9 @@
          graph-filter-by-object
          ;; --------------------------------------
          graph-skolemize
+         graph-skolemize!
          skolem-url?
+         ;; --------------------------------------
          describe-graph
          ;; --------------------------------------
          rdf-sub-graph
@@ -69,21 +73,26 @@
   (when (url? name)
    (internal-make-graph name statements)))
 
+(define (graph->quads graph)
+  (let ((graph-name (graph-name graph)))
+    (map (λ (stmt) (cons graph-name (statement->triple stmt))) (graph-statements graph))))
+
+;; -------------------------------------------------------------------------------------------------
+
 (define (graph-named? graph)
   (not (false? (graph-name graph))))
 
 (define (graph-empty? graph)
   (empty? (graph-statements graph)))
 
+(define (graph-has-duplicates? graph)
+  (not (false? (check-duplicates (graph-statements graph)))))
+
 (define (graph-count graph)
   (length (graph-statements graph)))
 
 (define (graph-order graph)
   (set-count (set-union (graph-distinct-subjects graph) (graph-distinct-objects graph))))
-
-(define (graph->quads graph)
-  (let ((graph-name (graph-name graph)))
-    (map (λ (stmt) (cons graph-name (statement->triple stmt))) (graph-statements graph))))
 
 (define (graph-distinct-subjects graph)
   (list->set (map (λ (stmt) (statement-subject stmt)) (graph-statements graph))))
@@ -94,38 +103,45 @@
 (define (graph-distinct-objects graph)
   (list->set (map (λ (stmt) (statement-object stmt)) (graph-statements graph))))
 
+;; -------------------------------------------------------------------------------------------------
+
 (define (graph-member? graph statement)
   (when (statement? statement)
     (member graph (graph-statements graph))))
-
-(define (graph-has-duplicates? graph)
-  (not (false? (check-duplicates (graph-statements graph)))))
 
 (define (graph-add graph statement)
   (graph-add-all (list statement)))
 
 (define (graph-add-all graph statements)
   (when (and (list? statements) (andmap statement? statements))
-    (set-graph-statements! graph (append statements (graph-statements graph)))))
+    (set-graph-statements! graph (append statements (graph-statements graph))))
+  graph)
 
 (define (graph-remove graph statement)
   (when (statement? statement)
-    (set-graph-statements! graph (remove statement (graph-statements graph)))))
+    (set-graph-statements! graph (remove statement (graph-statements graph))))
+  graph)
 
 (define (graph-remove-all graph statements)
   (when (and (list? statements) (andmap statement? statements))
-    (for-each (λ (statement) (graph-remove graph statement)) statements)))
+    (for-each (λ (statement) (graph-remove graph statement)) statements))
+  graph)
 
 (define (graph-remove* graph statement)
   (when (statement? statement)
-    (graph-remove-all* (list statement))))
+    (graph-remove-all* (list statement)))
+  graph)
 
 (define (graph-remove-all* graph statements)
   (when (and (list? statements) (andmap statement? statements))
-    (set-graph-statements! graph (remove* statements (graph-statements graph)))))
+    (set-graph-statements! graph (remove* statements (graph-statements graph))))
+  graph)
 
 (define (graph-clear graph)
-  (set-graph-statements! graph '()))
+  (set-graph-statements! graph '())
+  graph)
+
+;; -------------------------------------------------------------------------------------------------
 
 (define (graph-filter proc graph)
   (filter proc (graph-statements graph)))
@@ -169,17 +185,26 @@
               (equal? (path/param-path (first path)) ".well-known")
               (equal? (path/param-path (second path)) "skolem")))))
 
-(define/contract (graph-skolemize graph (domain-name "example.com"))
-  (-> graph? (opt/c string?) graph?)
+(define (graph-skolemize-statements statements (domain-name "example.com"))
   (let ((base-url (string->url (format "https://~a/.well-known/skolem/" domain-name)))
         (id-map (make-hash)))
-    (set-graph-statements!
-     graph
-     (map (λ (stmt)
+    (map (λ (stmt)
             (let ((subject (skolemize (statement-subject stmt) id-map base-url))
                   (object (skolemize (statement-object stmt) id-map base-url)))
               (make-statement subject (statement-predicate stmt) object)))
-          (graph-statements graph))))
+          statements)))
+
+(define/contract (graph-skolemize graph (domain-name "example.com"))
+  (->* (graph?) (string?) graph?)
+  (let ((new-statements (graph-skolemize-statements (graph-statements graph))))
+    (if (graph-named? graph)
+      (make-named-graph (graph-name graph) new-statements)
+      (make-default-graph new-statements))))
+
+(define/contract (graph-skolemize! graph (domain-name "example.com"))
+  (->* (graph?) (string?) graph?)
+  (let ((new-statements (graph-skolemize-statements (graph-statements graph))))
+    (set-graph-statements! graph new-statements))
   graph)
 
 ;; -------------------------------------------------------------------------------------------------
@@ -187,7 +212,7 @@
 ;; -------------------------------------------------------------------------------------------------
 
 (define/contract (describe-graph graph (subject #f))
-  (-> graph? (or/c subject? #f) (listof statement?))
+  (->* (graph?) ((or/c subject? #f)) statement-list?)
   (let ((subject (if (false? (subject)) (make-blank-node) subject)))
     (append
      (if (graph-named? graph)

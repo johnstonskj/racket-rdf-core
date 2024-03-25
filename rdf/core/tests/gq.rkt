@@ -25,9 +25,9 @@
                (make-statement (namespace-make-url ns "other") (namespace-make-url ns "hasName") "sheila")
                (make-statement (namespace-make-url ns "other") (namespace-make-url ns "hasAge") 24))))
             (query-pattern
-             (make-statement-pattern (ignore)
-                                     (match-value (namespace-make-url ns "hasName"))
-                                     (return-variable "name")))
+             (list (ignore)
+                   (comparitor (namespace-make-url ns "hasName"))
+                   (variable "name")))
             (results (graph-query graph query-pattern)))
        (check-equal? (statement-pattern->string query-pattern) "_ <http://example.com/hasName> ?name .\n")
        (check-equal? results '((("name" . "bob")) (("name" . "sheila"))))))))

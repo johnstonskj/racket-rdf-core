@@ -132,13 +132,13 @@ Constructs a new URL from the namespace URL and the name value.
 }
 
 @defproc[(name->url
-          [name name?])
+          [name ncname?])
          url-absolute?]{
 Constructs a new URL from the namespace URL and the name value.
 }
 
-@defproc[(name->url
-          [name qname?])
+@defproc[(name->qname
+          [name ncname?])
          qname?]{
 Constructs a new QName from the namespace prefix and the name value.
 }
@@ -178,9 +178,8 @@ Determines if @racket[val] is a literal? value, that is a @racket[boolean?],
 
 Package Description Here
 
-
 @defstruct*[blank-node
-            ()]{
+            ([id ncname?])]{
 TBD
 }
 
@@ -220,7 +219,7 @@ TBD
 TBD
 }
 
-@defstruct*[statements
+@defstruct*[statement
             ([subject subject?]
              [predicate predicate?]
              [object object?])]{
@@ -235,6 +234,13 @@ TBD
 TBD
 }
 
+@defproc[#:kind "predicate"
+         (statement-list?
+          [val any/c])
+         boolean?]{
+TBD
+}
+
 @;{----------------------------------------------------------------------------}
 
 @;{============================================================================}
@@ -243,6 +249,205 @@ TBD
 @defmodule[rdf/core/graph]
 
 Package Description Here
+
+@defstruct*[graph
+            ([name url-absolute?]
+             [statements statement-list?])]{
+TBD
+}
+
+@defproc[#:kind "constructor"
+         (make-default-graph
+          [statements statement-list?])
+         graph?]{
+TBD
+}
+
+@defproc[#:kind "constructor"
+         (make-names-graph
+          [name url-absolute?]
+          [statements statement-list?])
+         graph?]{
+TBD
+}
+
+@defproc[(graph->quads
+          [graph graph?])
+         (list/c subject? subject? predicate? object?)]{
+TBD
+}
+
+@;{----------------------------------------------------------------------------}
+
+@defproc[#:kind "predicate"
+         (graph-named?
+          [val graph?])
+         boolean?]{
+TBD
+}
+
+@defproc[#:kind "predicate"
+         (graph-empty?
+          [val graph?])
+         boolean?]{
+TBD
+}
+
+@defproc[#:kind "predicate"
+         (graph-has-duplicates?
+          [val graph?])
+         boolean?]{
+TBD
+}
+
+@;{----------------------------------------------------------------------------}
+
+@defproc[(graph-count
+          [val graph?])
+         exact-positive-integer?]{
+TBD
+}
+
+@defproc[(graph-order
+          [val graph?])
+         exact-positive-integer?]{
+TBD
+}
+
+@defproc[(graph-distinct-subjects
+          [val graph?])
+         exact-positive-integer?]{
+TBD
+}
+
+@defproc[(graph-distinct-predicates
+          [val graph?])
+         exact-positive-integer?]{
+TBD
+}
+
+@defproc[(graph-distinct-objects
+          [val graph?])
+         exact-positive-integer?]{
+TBD
+}
+
+@;{----------------------------------------------------------------------------}
+
+@defproc[(graph-member?
+          [val graph?]
+          [statement statement?])
+         boolean?]{
+TBD
+}
+
+@defproc[(graph-add
+          [val graph?]
+          [statement statement?])
+         graoh?]{
+TBD
+}
+
+@defproc[(graph-add-all
+          [val graph?]
+          [statements statement-list?])
+         graph?]{
+TBD
+}
+
+@defproc[(graph-remove
+          [val graph?]
+          [statement statement?])
+         graph?]{
+TBD
+}
+
+@defproc[(graph-remove-all
+          [val graph?]
+          [statements statement-list?])
+         graph?]{
+TBD
+}
+
+@defproc[(graph-remove-all*
+          [val graph?]
+          [statements statement-list?])
+         graph?]{
+TBD
+}
+
+@defproc[(graph-clear
+          [val graph?])
+         graph?]{
+TBD
+}
+
+@;{----------------------------------------------------------------------------}
+
+@defproc[(graph-filter
+          [proc (-> statement? boolean?)]
+          [val graph?])
+         statement-list?]{
+TBD
+}
+
+@defproc[(graph-filter-by-subject
+          [val graph?]
+          [obj subject?])
+         statement-list?]{
+TBD
+}
+
+@defproc[(graph-filter-by-predicate
+          [val graph?]
+          [obj predicate?])
+         statement-list?]{
+TBD
+}
+
+@defproc[(graph-filter-by-object
+          [val graph?]
+          [obj object?])
+         statement-list?]{
+TBD
+}
+
+@;{----------------------------------------------------------------------------}
+
+@defproc[(graph-skolemize
+          [val graph?]
+          [domain-name string? "example.com"])
+         graph?]{
+TBD
+}
+
+@defproc[(graph-skolemize!
+          [val graph?]
+          [domain-name string? "example.com"])
+         graph?]{
+TBD
+}
+
+@defproc[(skolem-url?
+          [url url?])
+         boolean?]{
+TBD
+}
+
+@;{----------------------------------------------------------------------------}
+
+@defproc[(describe-graph
+          [graph graph?]
+          [subject subject? #f])
+         statement-list?]{
+TBD
+}
+
+@;{----------------------------------------------------------------------------}
+
+@; macro: rdf-graph
+
+@; macro: rdf-sub-graph
 
 @;{============================================================================}
 @;{============================================================================}
@@ -257,6 +462,77 @@ Package Description Here
 @defmodule[rdf/core/gq]
 
 Package Description Here
+
+@defproc[#:kind "predicate"
+         (pattern-component?
+          [val any/c])
+         boolean?]{
+TBD
+}
+
+@defproc[(ignore)
+         pattern-component?]{
+TBD
+}
+
+@defproc[(comparitor
+          [value object?]
+          [operator procedure? equal?])
+         pattern-component?]{
+TBD
+}
+
+@defproc[(variable
+          [name ncname?])
+         pattern-component?]{
+TBD
+}
+
+@;{----------------------------------------------------------------------------}
+
+@defproc[#:kind "predicate"
+         (statement-pattern?
+          [val any/c])
+         boolean?]{
+TBD
+}
+
+@defproc[(statement-pattern-match
+          [pattern statement-pattern?]
+          [statement statement?])
+         boolean?]{
+TBD
+}
+
+@;{----------------------------------------------------------------------------}
+
+@defproc[#:kind "predicate"
+         (result-variable-value?
+          [val any/c])
+         boolean?]{
+TBD
+}
+
+@defproc[#:kind "predicate"
+         (result-statement?
+          [val any/c])
+         boolean?]{
+TBD
+}
+
+@defproc[#:kind "predicate"
+         (results?
+          [val any/c])
+         boolean?]{
+TBD
+}
+
+@defproc[(graph-query
+          [graph graph?]
+          [patterns (listof statement-pattern?)])
+         results?]{
+TBD
+}
 
 @;{============================================================================}
 @;{============================================================================}
@@ -351,3 +627,4 @@ Package Description Here
 @defthing[graph name?]{The @racket[name] structure corresponding to sd:graph.}
 @defthing[name name?]{The @racket[name] structure corresponding to sd:name.}
 @defthing[namedGraph name?]{@racket[name] name structure corresponding to sd:namedGraph.}
+
