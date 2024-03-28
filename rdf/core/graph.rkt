@@ -1,6 +1,6 @@
 #lang racket/base
 
-(require (for-syntax racket/base racket/syntax syntax/transformer)
+(require (for-syntax racket/base)
          racket/bool
          racket/contract
          racket/list

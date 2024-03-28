@@ -1,11 +1,10 @@
 #lang racket/base
 
-(require (for-syntax racket/base racket/syntax syntax/transformer)
+(require (for-syntax racket/base racket/syntax)
          racket/bool
          racket/contract
          racket/list
          racket/port
-         racket/string
          ;; --------------------------------------
          net/url-string
          ;; --------------------------------------

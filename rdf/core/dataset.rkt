@@ -1,10 +1,7 @@
 #lang racket/base
 
-(require racket/bool
-         racket/contract
+(require racket/contract
          racket/list
-         ;; --------------------------------------
-         net/url-string
          ;; --------------------------------------
          "./graph.rkt"
          "./statement.rkt"

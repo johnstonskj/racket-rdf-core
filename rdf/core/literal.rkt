@@ -2,7 +2,6 @@
 
 (require racket/contract
          ;; --------------------------------------
-         net/url-string
          net/url-structs)
 
 (provide (struct-out language-string)
