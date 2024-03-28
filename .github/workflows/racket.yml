@@ -1,0 +1,45 @@
+name: Racket
+
+on: [push, pull_request]
+
+env:
+  package: rdf-core
+  collection: rdf/core
+
+jobs:
+  build:
+    name: "Build on Racket '${{ matrix.racket-version }}' (${{ matrix.racket-variant }}) for ${{ matrix.os }}"
+    runs-on: ubuntu-latest
+    continue-on-error: ${{ matrix.experimental || false }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: ["ubuntu-latest", "windows-latest", "macos-latest"]
+        racket-version: ["stable", "current"]
+        racket-variant: ["BC", "CS"]
+        include:
+          - racket-version: current
+            experimental: true
+            
+    steps:
+      - uses: actions/checkout@v3.1.0
+      - uses: Bogdanp/setup-racket@v1.9.1
+        with:
+          architecture: x64
+          distribution: full
+          variant: ${{ matrix.racket-variant }}
+          version: ${{ matrix.racket-version }}
+          
+      - name: Install
+        run: raco pkg install --no-docs --auto --name ${{ env.package }}
+        
+      - name: Build
+        run: raco setup --check-pkg-deps --unused-pkg-deps ${{ env.collection }}
+        
+      - name: Test
+        run: raco test --table --collection ${{ env.collection }}
+        
+      - name: Coverage
+        run: >-
+          raco pkg install --force --name cover &&
+          raco cover --exclude-pkg-basics --format coveralls --package ${{ env.package }}

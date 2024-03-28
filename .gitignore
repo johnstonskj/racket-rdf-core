@@ -52,8 +52,9 @@ flycheck_*.el
 
 ### Racket ###
 
-# gitignore template for the Racket language
-# website: http://www.racket-lang.org/
+# Build files/directories
+build/
+/**/doc/
 
 # DrRacket autosave files
 *.rkt~
