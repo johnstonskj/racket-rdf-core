@@ -1,7 +1,6 @@
 #lang racket/base
 
-(require racket/bool
-         racket/contract
+(require racket/contract
          racket/list
          racket/string
          ;; --------------------------------------
@@ -31,7 +30,8 @@
 ;; `ncname` contracts
 ;; -------------------------------------------------------------------------------------------------
 
-(define (ncname? val)
+(define/contract (ncname? val)
+  (-> (or/c symbol? string?) boolean?)
   (cond
     ((symbol? val)
      (ncname? (symbol->string val)))
@@ -41,10 +41,12 @@
             (andmap name-char/c (cdr char-list)))))
     (else #f)))
 
-(define (string->ncname str)
+(define/contract (string->ncname str)
+  (-> string? (or/c string? #f))
   (if (ncname?) str #f))
 
-(define (symbol->ncname sym)
+(define/contract (symbol->ncname sym)
+  (-> symbol? (or/c string? #f))
   (string->ncname (symbol->string sym)))
 
 (define name-start-char/c
@@ -75,19 +77,27 @@
    (char-in #\u0300 #\u036F)
    (char-in #\u203F #\u2040)))
 
-(define (qname? val)
-  (let ((split (string-split val ":")))
-    (or (and (= (length split) 1)
-            (or (string-prefix? val ":") (string-suffix? val ":"))
-            (ncname? (car split)))
-        (and (= (length split) 2)
-             (andmap ncname? split)))))
+(define *qname-separator* ":")
+
+(define/contract (qname? val)
+  (-> (or/c symbol? string?) boolean?)
+  (cond
+    ((symbol? val) (qname? (symbol->string val)))
+    ((string? val)
+     (let ((split (string-split val *qname-separator*)))
+       (or (and (= (length split) 1)
+                (or (string-prefix? val *qname-separator*) (string-suffix? val *qname-separator*))
+                (ncname? (car split)))
+           (and (= (length split) 2)
+                (andmap ncname? split)))))
+    (else #f)))
 
 ;; -------------------------------------------------------------------------------------------------
 ;; Additional URL predicate
 ;; -------------------------------------------------------------------------------------------------
 
-(define (url-absolute? url)
+(define/contract (url-absolute? url)
+  (-> url? boolean?)
   (and (url? url)
        (non-empty-string? (url-scheme url))
        (non-empty-string? (url-host url))
@@ -110,29 +120,51 @@
   #:constructor-name internal-make-namespace
   #:guard (struct-guard/c url-absolute? ncname?))
 
-(define (make-namespace url prefix)
+(define/contract (make-namespace url prefix)
+  (-> (or/c string? url?) (or/c symbol? string?) namespace?)
   (let ((url (cond
                ((url? url) url)
-               ((string? url) (string->url url)))))
+               ((string? url) (string->url url))))
+        (prefix (cond
+                  ((symbol? prefix) (symbol->string prefix))
+                  (else prefix))))
     (internal-make-namespace url prefix)))
 
-(define (namespace-make-url ns name)
+(define/contract (namespace-make-url ns name)
+  (-> namespace? ncname? url?)
   (when (and (namespace? ns) (ncname? name))
     (combine-url/relative (namespace-url ns) name)))
 
-(define (namespace-make-qname ns name)
+(define/contract (namespace-make-qname ns name)
+  (-> namespace? ncname? qname?)
   (when (and (namespace? ns) (ncname? name))
     (string-append (namespace-prefix ns) ":" name)))
 
-(define (namespace-make-default-qname ns)
+(define/contract (namespace-make-default-qname ns)
+  (-> namespace? qname?)
   (when (namespace? ns)
       (string-append (namespace-prefix ns) ":")))
 
 ;; -------------------------------------------------------------------------------------------------
-;; `namespace` constants
+;; TODO `define-namespace` macro
 ;; -------------------------------------------------------------------------------------------------
 
-(define *namespace* (make-namespace "http://www.w3.org/2000/xmlns/" "xmlns"))
+;;(define-syntax (define-namespace stx)
+;;  (define (make-qname name)
+;;      (with-syntax ([qname (format-id #'name "~a:" (syntax-e #'name))])
+;;        #'qname))
+;;  (syntax-case stx ()
+;;    ((_ url prefix)
+;;     (with-syntax ((prefix-name (format-id #'prefix "~a:" (syntax-e #'prefix))))
+;;       #'(define prefix-name (make-namespace url (quote prefix)))))
+;;    ((_ url prefix name ...)
+;;     (with-syntax ((prefix-name (format-id #'prefix "~a:" (syntax-e #'prefix)))
+;;                   ((qname ...) (map make-qname (list #'(name ...)))))
+;;       #'(begin
+;;           (provide prefix-name qname ...)
+;;           (define prefix-name (make-namespace url (quote prefix)))
+;;           (define qname (make-name prefix-name name)) ...)))
+;;    ))
 
 ;; -------------------------------------------------------------------------------------------------
 ;; `name` struct type
@@ -143,16 +175,10 @@
   #:constructor-name make-name
   #:guard (struct-guard/c namespace? ncname?))
 
-(define (name->url obj)
-  (when (name? obj)
-    (namespace-make-url (name-namespace obj) (name-name obj))))
+(define/contract (name->url obj)
+  (-> name? url?)
+  (namespace-make-url (name-namespace obj) (name-name obj)))
 
-(define (name->qname obj)
-  (when (name? obj)
-    (namespace-make-qname (name-namespace obj) (name-name obj))))
-
-;; -------------------------------------------------------------------------------------------------
-;; `name` constants
-;; -------------------------------------------------------------------------------------------------
-
-(define *base* (make-name *namespace* "base"))
+(define/contract (name->qname obj)
+  (-> name? qname?)
+  (namespace-make-qname (name-namespace obj) (name-name obj)))

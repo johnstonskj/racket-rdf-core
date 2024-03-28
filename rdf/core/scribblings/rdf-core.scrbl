@@ -541,6 +541,30 @@ TBD
 
 Package Description Here
 
+@defthing[import-style/c flat-contract?]{TBD}
+
+@defproc[(namespace->import-statement
+          [graph graph?]
+          [patterns (listof statement-pattern?)])
+         results?]{
+TBD
+}
+
+@;{----------------------------------------------------------------------------}
+
+@deftogether[(
+  @defproc[(write-turtle-language-string=
+            [val language-string?]
+            [out output-port? (current-output-port)])
+           void?]
+  @defproc[(language-string->turtle-string
+            [val language-string?]
+            [out output-port? (current-output-port)])
+           results?]
+)]{
+TBD
+}
+
 @;{============================================================================}
 @;{============================================================================}
 @section[]{Module rdf/core/prelude}
