@@ -11,11 +11,11 @@
 ;; Support status: complete
 ;;
 
-(require (only-in "../namespace.rkt" make-namespace make-name))
+(require "../namespace.rkt")
 
 (provide (all-defined-out))
 
-(define *namespace* (make-namespace "xml" "http://www.w3.org/XML/1998/namespace#"))
+(define *namespace* (make-namespace "http://www.w3.org/XML/1998/namespace#" "xml"))
 
 ;; See https://www.w3.org/TR/xml11/#sec-white-space
 (define space (make-name *namespace* "space"))

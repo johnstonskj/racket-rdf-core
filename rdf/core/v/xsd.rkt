@@ -19,4 +19,4 @@
 
 (provide (all-defined-out))
 
-(define *namespace* (make-namespace "xsd" "http://www.w3.org/2001/XMLSchema#"))
+(define *namespace* (make-namespace "http://www.w3.org/2001/XMLSchema#" "xsd"))
