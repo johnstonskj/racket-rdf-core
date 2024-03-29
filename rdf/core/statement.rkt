@@ -1,6 +1,7 @@
 #lang racket/base
 
 (require racket/contract
+         racket/generic
          racket/list
          ;; --------------------------------------
          net/url-string
@@ -40,23 +41,29 @@
 (define shared-blank-node-counter 1)
 (define shared-blank-node-sem (make-semaphore 1))
 
-(define (next-blank-node-id)
+(define (make-blank-node-label)
   (semaphore-wait shared-blank-node-sem)
-  (let ((next-id shared-blank-node-counter))
-    (set! shared-blank-node-counter (add1 next-id))
+  (let ((next-label shared-blank-node-counter))
+    (set! shared-blank-node-counter (add1 next-label))
     (semaphore-post shared-blank-node-sem)
-    next-id))
+    next-label))
 
-(struct blank-node (id)
+(struct blank-node (label)
   #:sealed
+  #:transparent
   #:constructor-name internal-make-blank-node)
 
 (define (make-blank-node)
-  (internal-make-blank-node (next-blank-node-id)))
+  (internal-make-blank-node (make-blank-node-label)))
 
 ;; -------------------------------------------------------------------------------------------------
 ;; `statement` types
 ;; -------------------------------------------------------------------------------------------------
+
+(define-generics statement-like
+  (get-subject statement-like)
+  (get-predicate statement-like)
+  (get-object statement-like))
 
 (define resource? url?)
 
@@ -68,6 +75,7 @@
 
 (struct statement (subject predicate object)
   #:sealed
+  #:transparent
   #:constructor-name make-statement
   #:guard (struct-guard/c subject? predicate? object?))
 
@@ -102,9 +110,14 @@
      (map
       (λ (pair)
         (let* ((this-predicate (car pair))
-               (common-predicate (if (string? this-predicate) (string->url this-predicate) this-predicate))
+               (common-predicate (if (string? this-predicate)
+                                     (string->url this-predicate)
+                                     this-predicate))
                (this-object-list (cadr pair)))
-          (map (λ (this-object) (make-statement common-subject common-predicate this-object))
+          (map (λ (this-object) (make-statement
+                                 common-subject
+                                 common-predicate
+                                 (if (literal? this-object) this-object (->literal this-object))))
                this-object-list)))
       predicate-object-list))))
 

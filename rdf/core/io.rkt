@@ -9,6 +9,7 @@
          net/url-string
          ;; --------------------------------------
          "./namespace.rkt"
+         "./lang.rkt"
          "./literal.rkt"
          "./statement.rkt"
          "./graph.rkt"
@@ -18,10 +19,8 @@
 (provide import-style/c
          namespace->import-statement
          ;; --------------------------------------
-         write-turtle-language-string
-         language-string->turtle-string
-         write-turtle-typed-string
-         typed-string->turtle-string
+         write-turtle-literal
+         literal->turtle-string
          ;; --------------------------------------
          write-turtle-blank-node
          blank-node->turtle-string
@@ -67,7 +66,8 @@
 
 (define import-style/c (or/c 'ttl))
 
-(define (namespace->import-statement ns style)
+(define/contract (namespace->import-statement ns style)
+  (-> namespace? import-style/c string?)
   (when (and (namespace? ns) (import-style/c style))
     (cond
       ((symbol=? style 'ttl)
@@ -77,26 +77,15 @@
 ;; Printing literals
 ;; -------------------------------------------------------------------------------------------------
 
-(define (write-turtle-language-string val (out (current-output-port)))
-  ;;(-> language-string? output-port? void?)
-  (fprintf out "~s@~a" (language-string-text val) (language-string-language val)))
-
-(writer->to-string language-string turtle)
-
-(define (write-turtle-typed-string val (out (current-output-port)))
-  ;;(-> typed-string? output-port? void?)
-  (fprintf out "~s^^<~a>" (typed-string-text val) (url->string (typed-string-datatype val))))
-
-(writer->to-string typed-string turtle)
-
 (define (write-turtle-literal val (out (current-output-port)))
-  ;;(-> literal output-port? void?)
-  (cond
-    ((language-string? val) (write-turtle-language-string val out))
-    ((typed-string? val) (write-turtle-typed-string val out))
-    ((and (boolean? val) (boolean=? val #t)) (display "true" out))
-    ((and (boolean? val) (boolean=? val #f)) (display "false"))
-    (else (fprintf out "~s" val))))
+  ;;(->* (literal?) (output-port?) void?)
+  (let ((lexical-form (literal-lexical-form val))
+        (language-tag (literal-language-tag val))
+        (datatype-iri (literal-datatype-iri val)))
+    (cond
+      (language-tag (fprintf out "~s@~a" lexical-form language-tag))
+      (datatype-iri (fprintf out "~s^^<~a>" lexical-form (url->string datatype-iri)))
+      (else (fprintf out "~s" (literal-lexical-form val))))))
 
 (writer->to-string literal turtle)
 
@@ -106,7 +95,7 @@
 
 (define (write-turtle-blank-node val (out (current-output-port)))
   ;;(-> blank-node? output-port? void?)
-  (fprintf out "_:~a" (blank-node-id val)))
+  (fprintf out "_:~X" (blank-node-label val)))
 
 (writer->to-string blank-node turtle)
 
@@ -136,8 +125,6 @@
   (cond
     ((url? val) (write-turtle-resource val out))
     ((blank-node? val) (write-turtle-blank-node val out))
-    ((language-string? val) (write-turtle-language-string val out))
-    ((typed-string? val) (write-turtle-typed-string val out))
     ((literal? val) (write-turtle-literal val out))
     (else (fprintf out "WTF: ~s?" val))))
 

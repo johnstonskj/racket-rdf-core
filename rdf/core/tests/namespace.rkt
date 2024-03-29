@@ -5,9 +5,9 @@
          ;; --------------------------------------
          "../namespace.rkt")
 
-(provide namespace-test-suite
-         name-test-suite
-         ncname-test-suite)
+;; -------------------------------------------------------------------------------------------------
+;; Test Suite(s)
+;; -------------------------------------------------------------------------------------------------
 
 ;;(define (check-nil? val) (check-pred null? val))
 
@@ -120,3 +120,16 @@
        (for-each
         (lambda (elt) (check-pred ncname? elt))
         test-data)))))
+
+;; -------------------------------------------------------------------------------------------------
+;; Test Runner
+;; -------------------------------------------------------------------------------------------------
+
+(module+ test
+
+    (require rackunit
+             rackunit/text-ui)
+
+  (run-tests namespace-test-suite)
+  (run-tests name-test-suite)
+  (run-tests ncname-test-suite))

@@ -117,6 +117,7 @@
 
 (struct namespace (url prefix)
   #:sealed
+  #:transparent
   #:constructor-name internal-make-namespace
   #:guard (struct-guard/c url-absolute? ncname?))
 
@@ -133,7 +134,7 @@
 (define/contract (namespace-make-url ns name)
   (-> namespace? ncname? url?)
   (when (and (namespace? ns) (ncname? name))
-    (combine-url/relative (namespace-url ns) name)))
+    (string->url (string-append (url->string (namespace-url ns)) name))))
 
 (define/contract (namespace-make-qname ns name)
   (-> namespace? ncname? qname?)
@@ -172,6 +173,7 @@
 
 (struct name (namespace name)
   #:sealed
+  #:transparent
   #:constructor-name make-name
   #:guard (struct-guard/c namespace? ncname?))
 

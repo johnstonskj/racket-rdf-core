@@ -15,9 +15,13 @@
          make-name
          name?
          ;; --------------------------------------
-         make-language-string
-         make-typed-string
          literal?
+         literal-lexical-form
+         literal-datatype-iri
+         literal-language-tag
+         make-untyped-literal
+         make-typed-literal
+         make-lang-string-literal
          ;; --------------------------------------
          make-blank-node
          blank-node?

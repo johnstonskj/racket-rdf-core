@@ -26,6 +26,7 @@
 
 (struct dataset (name (graphs #:mutable))
   #:sealed
+  #:transparent
   #:constructor-name make-dataset
   #:guard (struct-guard/c (hash/c graph-name? graph?)))
 

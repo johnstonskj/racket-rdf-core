@@ -12,7 +12,8 @@
          ;; --------------------------------------
          uuid
          ;; --------------------------------------
-         "./namespace.rkt" ;; for tests only
+         "./namespace.rkt"
+         "./literal.rkt"
          "./statement.rkt"
          (prefix-in sd: (except-in "./v/sd.rkt" *namespace*))
          (prefix-in void:
@@ -63,6 +64,7 @@
 
 (struct graph (name (statements #:mutable))
   #:sealed
+  #:transparent
   #:constructor-name internal-make-graph
   #:guard (struct-guard/c graph-name? statement-list?))
 
@@ -165,13 +167,13 @@
 ;; Skolemization
 ;; -------------------------------------------------------------------------------------------------
 
-(define (skolemize node id-map base-url)
+(define (skolemize node label-map base-url)
   (cond ((blank-node? node)
-         (let ((old-id (blank-node-id node)))
-          (if (hash-has-key? id-map old-id)
-              (hash-ref id-map old-id)
+         (let ((old-label (blank-node-label node)))
+          (if (hash-has-key? label-map old-label)
+              (hash-ref label-map old-label)
               (let ((new-url (combine-url/relative base-url (uuid-string))))
-                (hash-set! id-map old-id new-url)
+                (hash-set! label-map old-label new-url)
                 new-url))))
         (else node)))
 
@@ -187,23 +189,23 @@
 
 (define (graph-skolemize-statements statements (domain-name "example.com"))
   (let ((base-url (string->url (format "https://~a/.well-known/skolem/" domain-name)))
-        (id-map (make-hash)))
+        (label-map (make-hash)))
     (map (λ (stmt)
-            (let ((subject (skolemize (statement-subject stmt) id-map base-url))
-                  (object (skolemize (statement-object stmt) id-map base-url)))
+            (let ((subject (skolemize (statement-subject stmt) label-map base-url))
+                  (object (skolemize (statement-object stmt) label-map base-url)))
               (make-statement subject (statement-predicate stmt) object)))
           statements)))
 
 (define/contract (graph-skolemize graph (domain-name "example.com"))
   (->* (graph?) (string?) graph?)
-  (let ((new-statements (graph-skolemize-statements (graph-statements graph))))
+  (let ((new-statements (graph-skolemize-statements (graph-statements graph) domain-name)))
     (if (graph-named? graph)
       (make-named-graph (graph-name graph) new-statements)
       (make-default-graph new-statements))))
 
 (define/contract (graph-skolemize! graph (domain-name "example.com"))
   (->* (graph?) (string?) graph?)
-  (let ((new-statements (graph-skolemize-statements (graph-statements graph))))
+  (let ((new-statements (graph-skolemize-statements (graph-statements graph) domain-name)))
     (set-graph-statements! graph new-statements))
   graph)
 
@@ -263,7 +265,7 @@
          (make-statement
           (if (string? subject) (string->url subject) subject)
           (if (string? predicate) (string->url predicate) predicate)
-          object))))
+          (if (literal? object) object (->literal object))))))
     ((_ subject (predicate object) ...)
      #'(let ((common-subject (if (string? subject) (string->url subject) subject)))
          (make-default-graph
@@ -274,7 +276,7 @@
                (make-statement
                 common-subject
                 (if (string? this-predicate) (string->url this-predicate) this-predicate)
-                this-object)))
+                (if (literal? this-object) this-object (->literal this-object)))))
            (list (list predicate object) ...)))))
     ((_ subject predicate object)
      #'(make-default-graph
@@ -282,6 +284,6 @@
          (make-statement
           (if (string? subject) (string->url subject) subject)
           (if (string? predicate) (string->url predicate) predicate)
-          object))))
+          (if (literal? object) object (->literal object))))))
     ))
 

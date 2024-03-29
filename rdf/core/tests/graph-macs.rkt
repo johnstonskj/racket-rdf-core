@@ -2,6 +2,7 @@
 
 (require rackunit
          ;; --------------------------------------
+         "../literal.rkt"
          "../statement.rkt"
          "../graph.rkt"
          "../io.rkt")
@@ -11,10 +12,10 @@
 
 (define macro-rdf-sub-graph-test-suite
   (test-suite
-   "Tests for macro `rdf-sub-graph`"
+   "Tests macro `rdf-sub-graph`"
 
    (test-case
-       "Tests for single statement"
+       "Single statement"
      (display
       (graph->ntriple-string
        (make-default-graph
@@ -22,17 +23,17 @@
                        "http://example.com/v/people#hasName" "Me!")))))
 
    (test-case
-       "Tests for single statement, using parens"
+       "Single statement, using parens"
      (display
       (graph->ntriple-string
        (make-default-graph
         (rdf-sub-graph "http://example.com/p/me"
-                       ("http://example.com/v/people#hasName" "Me!"))))))
+                       ("http://example.com/v/people#hasName" ("Me!")))))))
 
    (test-case
-       "Tests for multiple predicates with single objects"
+       "Multiple predicates with single objects"
      (display
-      (graph->nquad-string
+      (graph->ntriple-string
        (make-default-graph
         (rdf-sub-graph "http://example.com/p/me"
                        ("http://example.com/v/people#hasFirstName" "Me")
@@ -41,16 +42,16 @@
    (test-case
        "Tests for multiple predicates with single objects, using parens"
      (display
-      (graph->nquad-string
+      (graph->ntriple-string
        (make-default-graph
         (rdf-sub-graph "http://example.com/p/me"
                        ("http://example.com/v/people#hasFirstName" ("Me"))
                        ("http://example.com/v/people#hasLastName" ("!")))))))
 
    (test-case
-       "Tests for multiple predicates each with multiple objects"
+       "Multiple predicates each with multiple objects"
      (display
-      (graph->nquad-string
+      (graph->ntriple-string
        (make-default-graph
         (rdf-sub-graph "http://example.com/p/me"
                        ("http://example.com/v/people#hasName" ("Me" "!"))
@@ -59,19 +60,20 @@
    ;; ----------------------------------------------------------------------------
 
    (test-case
-       "Tests for anonymous subject and single statement"
+       "Anonymous subject and single statement"
      (display
       (graph->ntriple-string
        (make-default-graph
         (rdf-sub-graph "http://example.com/v/people#hasName" "Me!")))))
 
    (test-case
-       "Tests for anonymous subject and single statement, using parens"
+       "Anonymous subject and single statement, using parens"
      (display
-      (rdf-sub-graph ("http://example.com/v/people#hasName" "Me!"))))
+      (map statement->ntriple-string
+           (rdf-sub-graph ("http://example.com/v/people#hasName" ("Me!"))))))
 
    (test-case
-       "Tests for anonymous subject and multiple predicates with single objects"
+       "Anonymous subject and multiple predicates with single objects"
      (display
       (graph->nquad-string
        (make-default-graph
@@ -79,7 +81,7 @@
                        ("http://example.com/v/people#hasLastName" "!"))))))
 
    (test-case
-       "Tests for anonymous subject and multiple predicates with single objects, using parens"
+       "Anonymous subject and multiple predicates with single objects, using parens"
      (display
       (graph->nquad-string
        (make-default-graph
@@ -87,7 +89,7 @@
                        ("http://example.com/v/people#hasLastName" ("!")))))))
 
    (test-case
-       "Tests for anonymous subject and multiple predicates each with multiple objects"
+       "Anonymous subject and multiple predicates each with multiple objects"
      (display
       (graph->nquad-string
        (make-default-graph
@@ -98,23 +100,23 @@
 
 (define macro-rdf-graph-test-suite
   (test-suite
-   "Tests for macro `rdf-graph`"
+   "Test macro `rdf-graph`"
 
    (test-case
-       "Tests for single statement in default graph"
+       "Single statement in default graph"
      (display
       (graph->ntriple-string
        (rdf-graph "http://example.com/p/me" "http://example.com/v/people#hasName" "Me!"))))
 
    (test-case
-       "Tests for single statement in named graph"
+       "Single statement in named graph"
      (display
       (graph->nquad-string
        (rdf-graph "http://example.com/p/peeps" =>
                   "http://example.com/p/me" "http://example.com/v/people#hasName" "Me!"))))
 
    (test-case
-       "Tests for multi statement in default graph"
+       "Multi statement in default graph"
      (display
       (graph->nquad-string
        (rdf-graph "http://example.com/p/me"
@@ -122,3 +124,15 @@
                   ("http://example.com/v/people#hasLastName" "!")))))
 
    ))
+
+;; -------------------------------------------------------------------------------------------------
+;; Test Runner
+;; -------------------------------------------------------------------------------------------------
+
+(module+ test
+
+  (require rackunit
+           rackunit/text-ui)
+
+  (run-tests macro-rdf-sub-graph-test-suite)
+  (run-tests macro-rdf-graph-test-suite))

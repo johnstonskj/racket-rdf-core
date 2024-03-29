@@ -8,32 +8,45 @@
          "../graph.rkt"
          "../io.rkt")
 
-(provide core-io-test-suite)
+;; -------------------------------------------------------------------------------------------------
+;; Test Suite(s)
+;; -------------------------------------------------------------------------------------------------
 
 (define core-io-test-suite
   (test-suite
    "Tests for module `io` -- simple I/O for the data model"
 
    (test-case
-       "Test Statement Objects"
+       "Test Literals"
      (let ((test-data
-            (list (cons 22 "22")
-                  (cons 22.0 "22.0")
-                  (cons 1/2 "1/2")
-                  (cons #t "true")
-                  (cons #f "false")
-                  (cons "hello" "\"hello\"")
-                  (cons (string->url "http://example.org/some/thing")
-                        "<http://example.org/some/thing>")
-                  (cons (make-language-string "Hi" "en")
+            (list (cons (exact-integer->literal 22)
+                        "\"22\"^^<http://www.w3.org/2001/XMLSchema#integer>")
+                  (cons (flonum->literal 22.0)
+                        "\"22.0\"^^<http://www.w3.org/2001/XMLSchema#double>")
+                  (cons literal-true
+                        "\"true\"^^<http://www.w3.org/2001/XMLSchema#boolean>")
+                  (cons literal-false
+                        "\"false\"^^<http://www.w3.org/2001/XMLSchema#boolean>")
+                  (cons (make-untyped-literal "hello") "\"hello\"")
+                  (cons (make-lang-string-literal "Hi" "en")
                         "\"Hi\"@en")
-                  (cons (make-typed-string "22" (string->url "https://xsd.com/integer"))
-                        "\"22\"^^<https://xsd.com/integer>"))))
+                  (cons (make-typed-literal "22" (string->url "http://www.w3.org/2001/XMLSchema#short"))
+                        "\"22\"^^<http://www.w3.org/2001/XMLSchema#short>"))))
        (for-each
         (λ (pair)
-          (let ((actual (object->turtle-string (car pair))))
+          (let ((actual (literal->turtle-string (car pair))))
             (check-equal? actual (cdr pair))))
         test-data)))
 
    ))
 
+;; -------------------------------------------------------------------------------------------------
+;; Test Runner
+;; -------------------------------------------------------------------------------------------------
+
+(module+ test
+
+  (require rackunit
+           rackunit/text-ui)
+
+  (run-tests core-io-test-suite))
