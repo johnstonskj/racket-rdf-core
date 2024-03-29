@@ -38,8 +38,8 @@ jobs:
         
       - name: Test
         run: raco test --table --collection ${{ env.collection }}
-        
-      - name: Coverage
-        run: >-
-          raco pkg install --force --name cover &&
-          raco cover --exclude-pkg-basics --format coveralls --package ${{ env.package }}
+#        
+#      - name: Coverage
+#        run: >-
+#          raco pkg install --force --name cover &&
+#          raco cover --exclude-pkg-basics --format coveralls --package ${{ env.package }}
