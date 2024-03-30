@@ -50,6 +50,3 @@ simple query pattern to return the first names of each subject.
 **Version 0.1.0**
 
 - Initial version with very little documentation..
-
-[![Racket Language](https://racket-lang.org/logo-and-text-1-2.png)](https://racket-lang.org/)
-4;292;64M
