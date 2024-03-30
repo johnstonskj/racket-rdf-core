@@ -97,7 +97,7 @@
 ;; -------------------------------------------------------------------------------------------------
 
 (define/contract (url-absolute? url)
-  (-> url? boolean?)
+  (-> any/c boolean?)
   (and (url? url)
        (non-empty-string? (url-scheme url))
        (non-empty-string? (url-host url))

@@ -21,13 +21,6 @@
          make-typed-literal
          make-lang-string-literal
          ;; --------------------------------------
-         literal-true
-         literal-false
-         literal-empty-string
-         literal-exact-zero
-         literal-flonum-zero
-         literal-inexact-zero
-         ;; --------------------------------------
          has-datatype-iri?
          has-language-tag?
          has-xsd-datatype?
@@ -42,7 +35,14 @@
          inexact->literal
          string->literal
          time->literal
-         ->literal)
+         ->literal
+         ;; --------------------------------------
+         literal-true
+         literal-false
+         literal-empty-string
+         literal-exact-zero
+         literal-flonum-zero
+         literal-inexact-zero)
 
 ;; ------------------------------------------------------------------------------------------------
 ;; Literal structure
@@ -54,17 +54,17 @@
   #:constructor-name internal-make-literal
   #:guard (struct-guard/c string? (or/c url? #f) (or/c language-tag? #f)))
 
-(define/contract (make-untyped-literal value)
+(define/contract (make-untyped-literal form)
   (-> string? literal?)
-  (internal-make-literal value #f #f))
+  (internal-make-literal form #f #f))
 
-(define/contract (make-typed-literal value datatype-uri)
+(define/contract (make-typed-literal form datatype)
   (-> string? url-absolute? literal?)
-  (internal-make-literal value datatype-uri #f))
+  (internal-make-literal form datatype #f))
 
-(define/contract (make-lang-string-literal value language)
+(define/contract (make-lang-string-literal form language)
   (-> string? language-tag? literal?)
-  (internal-make-literal value (name->url rdf:lang-String) language))
+  (internal-make-literal form (name->url rdf:lang-String) language))
 
 ;; ------------------------------------------------------------------------------------------------
 ;; Literal predicates
@@ -85,9 +85,9 @@
                       (url->string (namespace-url (name-namespace xsd:any-type))))
       #f))
 
-(define/contract (is-a? val datatype-iri)
+(define/contract (is-a? val datatype)
   (-> literal? url-absolute? boolean?)
-  (equal? (literal-datatype-iri val) datatype-iri))
+  (equal? (literal-datatype-iri val) datatype))
 
 ;; ------------------------------------------------------------------------------------------------
 ;; Literal conversions

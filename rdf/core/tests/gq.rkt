@@ -5,7 +5,7 @@
          ;; --------------------------------------
          "../namespace.rkt"
          "../literal.rkt"
-         "../statement.rkt"
+         "../triple.rkt"
          "../graph.rkt"
          "../gq.rkt"
          "../io.rkt")
@@ -24,16 +24,16 @@
             (graph
              (make-default-graph
               (list
-               (make-statement (namespace-make-url ns "thing")
+               (make-triple (namespace-make-url ns "thing")
                                (namespace-make-url ns "hasName")
                                (->literal "bob"))
-               (make-statement (namespace-make-url ns "thing")
+               (make-triple (namespace-make-url ns "thing")
                                (namespace-make-url ns "hasAge")
                                (->literal 42))
-               (make-statement (namespace-make-url ns "other")
+               (make-triple (namespace-make-url ns "other")
                                (namespace-make-url ns "hasName")
                                (->literal "sheila"))
-               (make-statement (namespace-make-url ns "other")
+               (make-triple (namespace-make-url ns "other")
                                (namespace-make-url ns "hasAge")
                                (->literal 24)))))
             (query-pattern

@@ -15,6 +15,8 @@
          "./namespace.rkt"
          "./literal.rkt"
          "./statement.rkt"
+         "./triple.rkt"
+         ;; --------------------------------------
          (prefix-in sd: (except-in "./v/sd.rkt" *namespace*))
          (prefix-in void:
                     (except-in "./v/void.rkt" *namespace*))
@@ -22,6 +24,7 @@
 
 (provide (except-out (struct-out graph)
                      internal-make-graph)
+         graph-name-or-blank
          make-default-graph
          make-named-graph
          graph-name?
@@ -60,7 +63,7 @@
 ;; `graph` types
 ;; -------------------------------------------------------------------------------------------------
 
-(define graph-name? (or/c #f url?))
+(define graph-name? (or/c #f subject?))
 
 (struct graph (name (statements #:mutable))
   #:sealed
@@ -75,9 +78,10 @@
   (when (url? name)
    (internal-make-graph name statements)))
 
-(define (graph->quads graph)
-  (let ((graph-name (graph-name graph)))
-    (map (λ (stmt) (cons graph-name (statement->triple stmt))) (graph-statements graph))))
+(define (graph-name-or-blank graph)
+  (if (graph-named? graph)
+      (graph-name graph)
+      (make-blank-node)))
 
 ;; -------------------------------------------------------------------------------------------------
 
@@ -90,6 +94,8 @@
 (define (graph-has-duplicates? graph)
   (not (false? (check-duplicates (graph-statements graph)))))
 
+;; -------------------------------------------------------------------------------------------------
+
 (define (graph-count graph)
   (length (graph-statements graph)))
 
@@ -97,13 +103,13 @@
   (set-count (set-union (graph-distinct-subjects graph) (graph-distinct-objects graph))))
 
 (define (graph-distinct-subjects graph)
-  (list->set (map (λ (stmt) (statement-subject stmt)) (graph-statements graph))))
+  (list->set (map (λ (stmt) (get-subject stmt)) (graph-statements graph))))
 
 (define (graph-distinct-predicates graph)
-  (list->set (map (λ (stmt) (statement-predicate stmt)) (graph-statements graph))))
+  (list->set (map (λ (stmt) (get-predicate stmt)) (graph-statements graph))))
 
 (define (graph-distinct-objects graph)
-  (list->set (map (λ (stmt) (statement-object stmt)) (graph-statements graph))))
+  (list->set (map (λ (stmt) (get-object stmt)) (graph-statements graph))))
 
 ;; -------------------------------------------------------------------------------------------------
 
@@ -150,17 +156,17 @@
 
 (define (graph-filter-by-subject graph obj)
   (graph-filter
-   (λ (stmt) (equal? (statement-subject stmt) obj))
+   (λ (stmt) (equal? (get-subject stmt) obj))
    graph))
 
 (define (graph-filter-by-predicate graph obj)
   (graph-filter
-   (λ (stmt) (equal? (statement-predicate stmt) obj))
+   (λ (stmt) (equal? (get-predicate stmt) obj))
    graph))
 
 (define (graph-filter-by-object graph obj)
   (graph-filter
-   (λ (stmt) (equal? (statement-object stmt) obj))
+   (λ (stmt) (equal? (get-object stmt) obj))
    graph))
 
 ;; -------------------------------------------------------------------------------------------------
@@ -191,9 +197,9 @@
   (let ((base-url (string->url (format "https://~a/.well-known/skolem/" domain-name)))
         (label-map (make-hash)))
     (map (λ (stmt)
-            (let ((subject (skolemize (statement-subject stmt) label-map base-url))
-                  (object (skolemize (statement-object stmt) label-map base-url)))
-              (make-statement subject (statement-predicate stmt) object)))
+            (let ((subject (skolemize (get-subject stmt) label-map base-url))
+                  (object (skolemize (get-object stmt) label-map base-url)))
+              (make-triple subject (get-predicate stmt) object)))
           statements)))
 
 (define/contract (graph-skolemize graph (domain-name "example.com"))
@@ -220,17 +226,17 @@
      (if (graph-named? graph)
          (list
           (make-type-statement subject sd:NamedGraph)
-          (make-statement subject sd:name (graph-name graph)))
+          (make-triple subject sd:name (graph-name graph)))
          (list
           (make-type-statement subject sd:Graph)))
      (let ((graph-node (make-blank-node)))
        (list
-        (make-statement subject sd:graph graph-node)
+        (make-triple subject sd:graph graph-node)
         (make-type-statement graph-node sd:Graph)
-        (make-statement graph-node void:triples (graph-count graph))
-        (make-statement graph-node void:distinctSubjects (count (graph-distinct-subjects graph)))
-        (make-statement graph-node void:properties (count (graph-distinct-predicates graph)))
-        (make-statement graph-node void:distinctObjects (count (graph-distinct-objects graph))))))))
+        (make-triple graph-node void:triples (graph-count graph))
+        (make-triple graph-node void:distinctSubjects (count (graph-distinct-subjects graph)))
+        (make-triple graph-node void:properties (count (graph-distinct-predicates graph)))
+        (make-triple graph-node void:distinctObjects (count (graph-distinct-objects graph))))))))
 
 ;; -------------------------------------------------------------------------------------------------
 ;; Macros
@@ -262,7 +268,7 @@
      #'(make-named-graph
         (if (string? named) (string->url named) named)
         (list
-         (make-statement
+         (make-triple
           (if (string? subject) (string->url subject) subject)
           (if (string? predicate) (string->url predicate) predicate)
           (if (literal? object) object (->literal object))))))
@@ -273,7 +279,7 @@
            (λ (pair)
              (let ((this-predicate (car pair))
                    (this-object (cadr pair)))
-               (make-statement
+               (make-triple
                 common-subject
                 (if (string? this-predicate) (string->url this-predicate) this-predicate)
                 (if (literal? this-object) this-object (->literal this-object)))))
@@ -281,7 +287,7 @@
     ((_ subject predicate object)
      #'(make-default-graph
         (list
-         (make-statement
+         (make-triple
           (if (string? subject) (string->url subject) subject)
           (if (string? predicate) (string->url predicate) predicate)
           (if (literal? object) object (->literal object))))))

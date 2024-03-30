@@ -34,7 +34,7 @@
                         "\"22\"^^<http://www.w3.org/2001/XMLSchema#short>"))))
        (for-each
         (λ (pair)
-          (let ((actual (literal->turtle-string (car pair))))
+          (let ((actual (literal->ntriple-string (car pair))))
             (check-equal? actual (cdr pair))))
         test-data)))
 

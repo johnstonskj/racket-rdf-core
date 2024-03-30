@@ -9,7 +9,6 @@
          net/url-string
          ;; --------------------------------------
          "./namespace.rkt"
-         "./lang.rkt"
          "./literal.rkt"
          "./statement.rkt"
          "./graph.rkt"
@@ -19,19 +18,19 @@
 (provide import-style/c
          namespace->import-statement
          ;; --------------------------------------
-         write-turtle-literal
-         literal->turtle-string
+         write-ntriple-literal
+         literal->ntriple-string
          ;; --------------------------------------
-         write-turtle-blank-node
-         blank-node->turtle-string
-         write-turtle-resource
-         resource->turtle-string
-         write-turtle-subject
-         subject->turtle-string
-         write-turtle-predicate
-         predicate->turtle-string
-         write-turtle-object
-         object->turtle-string
+         write-ntriple-blank-node
+         blank-node->ntriple-string
+         write-ntriple-resource
+         resource->ntriple-string
+         write-ntriple-subject
+         subject->ntriple-string
+         write-ntriple-predicate
+         predicate->ntriple-string
+         write-ntriple-object
+         object->ntriple-string
          ;; --------------------------------------
          write-ntriple-statement
           statement->ntriple-string
@@ -77,8 +76,8 @@
 ;; Printing literals
 ;; -------------------------------------------------------------------------------------------------
 
-(define (write-turtle-literal val (out (current-output-port)))
-  ;;(->* (literal?) (output-port?) void?)
+(define/contract (write-ntriple-literal val (out (current-output-port)))
+  (->* (literal?) (output-port?) void?)
   (let ((lexical-form (literal-lexical-form val))
         (language-tag (literal-language-tag val))
         (datatype-iri (literal-datatype-iri val)))
@@ -87,48 +86,47 @@
       (datatype-iri (fprintf out "~s^^<~a>" lexical-form (url->string datatype-iri)))
       (else (fprintf out "~s" (literal-lexical-form val))))))
 
-(writer->to-string literal turtle)
+(writer->to-string literal ntriple)
 
 ;; -------------------------------------------------------------------------------------------------
 ;; Printing "atoms"
 ;; -------------------------------------------------------------------------------------------------
 
-(define (write-turtle-blank-node val (out (current-output-port)))
-  ;;(-> blank-node? output-port? void?)
+(define/contract (write-ntriple-blank-node val (out (current-output-port)))
+  (->* (blank-node?) (output-port?) void?)
   (fprintf out "_:~X" (blank-node-label val)))
 
-(writer->to-string blank-node turtle)
+(writer->to-string blank-node ntriple)
 
-(define (write-turtle-resource val (out (current-output-port)))
-  ;;(-> resource? output-port? void?)
+(define/contract (write-ntriple-resource val (out (current-output-port)))
+  (->* (resource?) (output-port?) void?)
   (fprintf out "<~a>" (url->string val)))
 
-(writer->to-string resource turtle)
+(writer->to-string resource ntriple)
 
-(define (write-turtle-subject val (out (current-output-port)))
-  ;;(-> subject? output-port? void?)
+(define/contract (write-ntriple-subject val (out (current-output-port)))
+  (->* (subject?) (output-port?) void?)
   (cond
-    ((url? val) (write-turtle-resource val out))
-    ((blank-node? val) (write-turtle-blank-node val out))))
+    ((url? val) (write-ntriple-resource val out))
+    ((blank-node? val) (write-ntriple-blank-node val out))))
 
-(writer->to-string subject turtle)
+(writer->to-string subject ntriple)
 
-(define (write-turtle-predicate val (out (current-output-port)))
-  ;;(-> resource? output-port? void?)
+(define/contract (write-ntriple-predicate val (out (current-output-port)))
+  (->* (predicate?) (output-port?) void?)
   (cond
-    ((url? val) (write-turtle-resource val out))))
+    ((url? val) (write-ntriple-resource val out))))
 
-(writer->to-string predicate turtle)
+(writer->to-string predicate ntriple)
 
-(define/contract (write-turtle-object val (out (current-output-port)))
+(define/contract (write-ntriple-object val (out (current-output-port)))
   (->* (object?) (output-port?) void?)
   (cond
-    ((url? val) (write-turtle-resource val out))
-    ((blank-node? val) (write-turtle-blank-node val out))
-    ((literal? val) (write-turtle-literal val out))
-    (else (fprintf out "WTF: ~s?" val))))
+    ((url? val) (write-ntriple-resource val out))
+    ((blank-node? val) (write-ntriple-blank-node val out))
+    ((literal? val) (write-ntriple-literal val out))))
 
-(writer->to-string object turtle)
+(writer->to-string object ntriple)
 
 ;; -------------------------------------------------------------------------------------------------
 ;; Printing statements
@@ -140,26 +138,28 @@
 (define (write-end-of-statement (out (current-output-port)))
   (displayln " ." out))
 
-(define (write-ntriple-statement stmt (out (current-output-port)))
-  ;;(-> statement? output-port? void?)
-  (write-turtle-subject (statement-subject stmt) out)
+(define/contract (write-ntriple-statement stmt (out (current-output-port)))
+  (->* (statement?) (output-port?) void?)
+  (write-ntriple-subject (get-subject stmt) out)
   (write-inner-whitespace out)
-  (write-turtle-predicate (statement-predicate stmt) out)
+  (write-ntriple-predicate (get-predicate stmt) out)
   (write-inner-whitespace out)
-  (write-turtle-object (statement-object stmt) out)
+  (write-ntriple-object (get-object stmt) out)
   (write-end-of-statement out))
 
 (writer->to-string statement ntriple)
 
-(define (write-nquad-statement graph-name stmt (out (current-output-port)))
-  ;;(-> resource? statement? output-port? void?)
-  (write-turtle-subject (statement-subject stmt) out)
+;; TODO: rename these!
+
+(define/contract (write-nquad-statement graph-name stmt (out (current-output-port)))
+  (->* (subject? statement?) (output-port?) void?)
+  (write-ntriple-subject (get-subject stmt) out)
   (write-inner-whitespace out)
-  (write-turtle-predicate (statement-predicate stmt) out)
+  (write-ntriple-predicate (get-predicate stmt) out)
   (write-inner-whitespace out)
-  (write-turtle-object (statement-object stmt) out)
+  (write-ntriple-object (get-object stmt) out)
   (write-inner-whitespace out)
-  (write-turtle-subject graph-name out)
+  (write-ntriple-subject graph-name out)
   (write-end-of-statement out))
 
 (define (statement->nquad-string graph-name val)
@@ -169,17 +169,17 @@
 ;; Printing graphs
 ;; -------------------------------------------------------------------------------------------------
 
-(define (write-ntriple-graph graph (out (current-output-port)))
-  ;;(-> graph? outout-port?? void?)
+(define/contract (write-ntriple-graph graph (out (current-output-port)))
+  (->* (graph?) (output-port?) void?)
   (for-each
    (λ (stmt) (write-ntriple-statement stmt out))
    (graph-statements graph)))
 
 (writer->to-string graph ntriple)
 
-(define (write-nquad-graph graph (out (current-output-port)))
-  ;;(-> graph? outout-port?? void?)
-  (let ((graph-name (if (false? (graph-name graph)) (make-blank-node) (graph-name graph))))
+(define/contract (write-nquad-graph graph (out (current-output-port)))
+  (->* (graph?) (output-port?) void?)
+  (let ((graph-name (graph-name-or-blank graph)))
     (for-each
      (λ (stmt) (write-nquad-statement graph-name stmt out))
      (graph-statements graph))))
@@ -190,12 +190,12 @@
 ;; Printing data sets
 ;; -------------------------------------------------------------------------------------------------
 
-(define (write-ntriple-dataset dataset (out (current-output-port)))
-  ;;(-> dataset? outout-port?? void?)
+(define/contract (write-ntriple-dataset dataset (out (current-output-port)))
+  (->* (dataset?) (output-port?) void?)
   (for-each
    (λ (graph)
      (when (graph-named? graph)
-       (fprintf out "graph ~a {~n" (write-turtle-subject (graph-name graph) out)))
+       (fprintf out "graph ~a {~n" (write-ntriple-subject (graph-name graph) out)))
      (write-ntriple-graph graph out)
      (displayln "}" out))
    (dataset-graphs dataset)))
@@ -206,19 +206,19 @@
 ;; Printing statement patterns
 ;; -------------------------------------------------------------------------------------------------
 
-(define (write-match-component pattern (out (current-output-port)))
+(define (write-pattern-component pattern (out (current-output-port)))
   (cond
     ((ignore? pattern) (display "_" out))
-    ((comparitor? pattern) (write-turtle-object (car pattern) out))
+    ((comparitor? pattern) (write-ntriple-object (car pattern) out))
     ((variable? pattern) (fprintf out "?~a" pattern))))
 
 (define (write-statement-pattern pattern (out (current-output-port)))
-  ;;(-> statement-pattern? output-port? void?)
-  (write-match-component (first pattern) out)
+  (->* (statement-pattern?) (output-port?) void?)
+  (write-pattern-component (first pattern) out)
   (write-inner-whitespace out)
-  (write-match-component (second pattern) out)
+  (write-pattern-component (second pattern) out)
   (write-inner-whitespace out)
-  (write-match-component (third pattern) out)
+  (write-pattern-component (third pattern) out)
   (write-end-of-statement out))
 
 (writer->to-string statement-pattern)

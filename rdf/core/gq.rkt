@@ -68,9 +68,9 @@
 (define statement-pattern? (list/c pattern-component? pattern-component? pattern-component?))
 
 (define (statement-pattern-match pattern statement)
-  (let ((subject (component-match (first pattern) (statement-subject statement)))
-        (predicate (component-match (second pattern) (statement-predicate statement)))
-        (object (component-match (third pattern) (statement-object statement))))
+  (let ((subject (component-match (first pattern) (get-subject statement)))
+        (predicate (component-match (second pattern) (get-predicate statement)))
+        (object (component-match (third pattern) (get-object statement))))
     (if (and subject predicate object)
         (filter cons? (list subject predicate object))
         #false)))

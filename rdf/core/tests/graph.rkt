@@ -6,6 +6,7 @@
          "../namespace.rkt"
          "../literal.rkt"
          "../statement.rkt"
+         "../triple.rkt"
          "../graph.rkt"
          ;; --------------------------------------
          (only-in "../io.rkt" graph->ntriple-string))
@@ -42,12 +43,12 @@
             (bnode-2 (make-blank-node))
             (test-graph (make-default-graph
                          (list
-                          (make-statement (namespace-make-url ns "thing") (namespace-make-url ns "hasName") bnode-1)
-                          (make-statement bnode-1 (namespace-make-url ns "firstName") (string->literal "spongebob"))
-                          (make-statement bnode-1 (namespace-make-url ns "lastName") (string->literal "squarepants"))
-                          (make-statement bnode-1 (namespace-make-url ns "hasFriend") bnode-2)
-                          (make-statement bnode-2 (namespace-make-url ns "firstName") (string->literal "patrick"))
-                          (make-statement bnode-2 (namespace-make-url ns "lastName") (string->literal "star"))))))
+                          (make-triple (namespace-make-url ns "thing") (namespace-make-url ns "hasName") bnode-1)
+                          (make-triple bnode-1 (namespace-make-url ns "firstName") (string->literal "spongebob"))
+                          (make-triple bnode-1 (namespace-make-url ns "lastName") (string->literal "squarepants"))
+                          (make-triple bnode-1 (namespace-make-url ns "hasFriend") bnode-2)
+                          (make-triple bnode-2 (namespace-make-url ns "firstName") (string->literal "patrick"))
+                          (make-triple bnode-2 (namespace-make-url ns "lastName") (string->literal "star"))))))
        (printf "~a" (graph->ntriple-string test-graph))
        (printf "~a" (graph->ntriple-string (graph-skolemize test-graph "example.org")))))))
 

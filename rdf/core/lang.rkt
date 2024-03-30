@@ -2,9 +2,7 @@
 
 (require racket/bool
          racket/contract
-         racket/string
-         ;; --------------------------------------
-         net/url-structs)
+         racket/string)
 
 (provide language-tag?)
 
@@ -102,7 +100,8 @@
         bcp47-private-use))
       bcp47-private-use-1)))))
 
-(define (language-tag? val)
+(define/contract (language-tag? val)
+  (-> string? boolean?)
   (cond
     ((symbol? val) (language-tag? (symbol->string val)))
     ((string? val) (not (false? (regexp-match bcp47-pattern val))))

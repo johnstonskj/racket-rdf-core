@@ -2,12 +2,11 @@
 
 (require racket/contract
          racket/generic
-         racket/list
          ;; --------------------------------------
-         net/url-string
          net/url-structs
          ;; --------------------------------------
          "./literal.rkt"
+         "./namespace.rkt"
          (prefix-in rdf: (except-in "./v/rdf.rkt" *namespace*)))
 
 (provide (except-out (struct-out blank-node)
@@ -19,20 +18,17 @@
          predicate?
          object?
          ;; --------------------------------------
-         (struct-out statement)
-         make-statement
-         make-reified-statement
-         statement-reify
-         statement->triple
+         (rename-out (gen:any-statement gen:statement))
+         (rename-out (any-statement? statement?))
+         statement/c
+         get-subject
+         get-predicate
+         get-object
          ;; --------------------------------------
-         statement-list?
-         make-statement-list
-         make-anon-statement-list
+         statement->list
+         statement->reified-list
          ;; --------------------------------------
-         statement-add-to-subject
-         statement-add-to-object
-         make-type-statement
-         statement-add-type-to-subject)
+         statement-list?)
 
 ;; -------------------------------------------------------------------------------------------------
 ;; `blank-node` types
@@ -57,15 +53,10 @@
   (internal-make-blank-node (make-blank-node-label)))
 
 ;; -------------------------------------------------------------------------------------------------
-;; `statement` types
+;; Predicates
 ;; -------------------------------------------------------------------------------------------------
 
-(define-generics statement-like
-  (get-subject statement-like)
-  (get-predicate statement-like)
-  (get-object statement-like))
-
-(define resource? url?)
+(define resource? url-absolute?)
 
 (define subject? (or/c resource? blank-node?))
 
@@ -73,67 +64,38 @@
 
 (define object? (or/c resource? blank-node? literal?))
 
-(struct statement (subject predicate object)
-  #:sealed
-  #:transparent
-  #:constructor-name make-statement
-  #:guard (struct-guard/c subject? predicate? object?))
+;; -------------------------------------------------------------------------------------------------
+;; `statement` generic type
+;; -------------------------------------------------------------------------------------------------
 
-(define (make-reified-statement subject predicate object)
+(define-generics any-statement
+  (get-subject any-statement)
+  (get-predicate any-statement)
+  (get-object any-statement)
+  #:requires (get-subject get-predicate get-object))
+
+(define statement/c
+  (any-statement/c (get-subject (-> any-statement? subject?))
+                   (get-predicate (-> any-statement? predicate?))
+                   (get-object (-> any-statement? object?))))
+
+;; -------------------------------------------------------------------------------------------------
+
+(define (statement->list stmt)
+  (list (get-subject stmt)
+        (get-predicate stmt)
+        (get-object stmt)))
+
+(define (statement->reified-list stmt)
   (let ((blank-node (make-blank-node)))
     (list
-     (make-statement blank-node rdf:type rdf:Statement)
-     (make-statement blank-node rdf:subject subject)
-     (make-statement blank-node rdf:predicate predicate)
-     (make-statement blank-node rdf:object object))))
-
-(define (statement-reify stmt)
-  (make-reified-statement
-   (statement-subject stmt)
-   (statement-predicate stmt)
-   (statement-object stmt)))
-
-(define (statement->triple stmt)
-  (list (statement-subject stmt)
-        (statement-predicate stmt)
-        (statement-object stmt)))
+     (list blank-node rdf:type rdf:Statement)
+     (list blank-node rdf:subject (get-subject stmt))
+     (list blank-node rdf:predicate (get-predicate stmt))
+     (list blank-node rdf:object (get-object stmt)))))
 
 ;; -------------------------------------------------------------------------------------------------
 ;; Statement Lists
 ;; -------------------------------------------------------------------------------------------------
 
-(define statement-list? (listof statement?))
-
-(define (make-statement-list subject predicate-object-list)
-  (let ((common-subject (if (string? subject) (string->url subject) subject)))
-    (flatten
-     (map
-      (λ (pair)
-        (let* ((this-predicate (car pair))
-               (common-predicate (if (string? this-predicate)
-                                     (string->url this-predicate)
-                                     this-predicate))
-               (this-object-list (cadr pair)))
-          (map (λ (this-object) (make-statement
-                                 common-subject
-                                 common-predicate
-                                 (if (literal? this-object) this-object (->literal this-object))))
-               this-object-list)))
-      predicate-object-list))))
-
-(define (make-anon-statement-list predicate-object-list)
-  (make-statement-list (make-blank-node) predicate-object-list))
-
-;; -------------------------------------------------------------------------------------------------
-;; Additional Constructors
-;; -------------------------------------------------------------------------------------------------
-
-(define (statement-add-to-subject stmt predicate object)
-  (make-statement (statement-subject stmt) predicate object))
-
-(define (statement-add-to-object stmt predicate object)
-  (make-statement (statement-object stmt) predicate object))
-
-(define (make-type-statement subject object) (make-statement subject rdf:type object))
-
-(define (statement-add-type-to-subject stmt object) (make-type-statement (statement-subject stmt) object))
+(define statement-list? (listof any-statement?))

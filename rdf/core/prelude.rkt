@@ -3,6 +3,7 @@
 (require "./namespace.rkt"
          "./literal.rkt"
          "./statement.rkt"
+         "./triple.rkt"
          "./graph.rkt"
          "./dataset.rkt"
          "./io.rkt")
@@ -22,23 +23,26 @@
          make-untyped-literal
          make-typed-literal
          make-lang-string-literal
+         write-ntriple-literal
          ;; --------------------------------------
          make-blank-node
          blank-node?
          subject?
          predicate?
          object?
-          ;; --------------------------------------
-         make-statement
          statement?
-         statement-subject
-         statement-predicate
-         statement-object
+         get-subject
+         get-predicate
+         get-object
+         ;; --------------------------------------
+         make-triple
+         triple?
          write-ntriple-statement
          write-nquad-statement
          ;; --------------------------------------
          make-default-graph
          make-named-graph
+         graph?
          graph-named?
          graph-empty?
          graph-member?
@@ -50,6 +54,7 @@
          write-nquad-graph
          ;; --------------------------------------
          make-dataset
+         dataset?
          dataset-empty?
          dataset-has-key?
          dataset-has-default?
