@@ -17,15 +17,15 @@
 
 (provide (all-defined-out))
 
-(define *namespace* (make-namespace "http://www.w3.org/ns/sparql-service-description#" "sd"))
+(define sd: (make-namespace "http://www.w3.org/ns/sparql-service-description#" "sd"))
 
-(define Dataset (make-name *namespace* "Dataset"))
-(define Graph (make-name *namespace* "Graph"))
-(define NamedGraph (make-name *namespace* "NamedGraph"))
-(define GraphCollection (make-name *namespace* "GraphCollection"))
+(define sd:Dataset (make-name sd: "Dataset"))
+(define sd:Graph (make-name sd: "Graph"))
+(define sd:NamedGraph (make-name sd: "NamedGraph"))
+(define sd:GraphCollection (make-name sd: "GraphCollection"))
 
-(define defaultDataset (make-name *namespace* "defaultDataset"))
-(define defaultGraph (make-name *namespace* "defaultGraph"))
-(define graph (make-name *namespace* "graph"))
-(define name (make-name *namespace* "name"))
-(define namedGraph (make-name *namespace* "namedGraph"))
+(define sd:defaultDataset (make-name sd: "defaultDataset"))
+(define sd:defaultGraph (make-name sd: "defaultGraph"))
+(define sd:graph (make-name sd: "graph"))
+(define sd:name (make-name sd: "name"))
+(define sd:namedGraph (make-name sd: "namedGraph"))

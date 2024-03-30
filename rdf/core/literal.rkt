@@ -10,8 +10,8 @@
          ;; --------------------------------------
          "./lang.rkt"
          "./namespace.rkt"
-         (prefix-in rdf: (only-in "./v/rdf.rkt" lang-String))
-         (prefix-in xsd: (except-in "./v/xsd.rkt" *namespace*)))
+         "./v/rdf.rkt"
+         "./v/xsd.rkt")
 
 (provide literal?
          literal-lexical-form

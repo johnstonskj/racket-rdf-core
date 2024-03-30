@@ -15,14 +15,14 @@
 
 (provide (all-defined-out))
 
-(define *namespace* (make-namespace "http://www.w3.org/XML/1998/namespace#" "xml"))
+(define xml: (make-namespace "http://www.w3.org/XML/1998/namespace#" "xml"))
 
 ;; See https://www.w3.org/TR/xml11/#sec-white-space
-(define space (make-name *namespace* "space"))
+(define xml:space (make-name xml: "space"))
 
 ;; See https://www.w3.org/TR/xml11/#sec-lang-tag
-(define lang (make-name *namespace* "lang"))
+(define xml:lang (make-name xml: "lang"))
 
 ;; This is an extension to XML 1.0 and therefore 1.1.
 ;; See: XML Base (Second Edition) (https://www.w3.org/TR/xmlbase/)
-(define base (make-name *namespace* "base"))
+(define xml:base (make-name xml: "base"))

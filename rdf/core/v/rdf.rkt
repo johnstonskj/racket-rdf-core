@@ -17,27 +17,27 @@
 
 (provide (all-defined-out))
 
-(define *namespace* (make-namespace "http://www.w3.org/1999/02/22-rdf-syntax-ns#" "rdf"))
+(define rdf: (make-namespace "http://www.w3.org/1999/02/22-rdf-syntax-ns#" "rdf"))
 
-(define lang-String (make-name *namespace* "langString"))
-(define HTML (make-name *namespace* "HTML"))
-(define XML-Literal (make-name *namespace* "XMLLiteral"))
+(define rdf:lang-String (make-name rdf: "langString"))
+(define rdf:HTML (make-name rdf: "HTML"))
+(define rdf:XML-Literal (make-name rdf: "XMLLiteral"))
 
-(define Property (make-name *namespace* "Property"))
-(define type (make-name *namespace* "type"))
+(define rdf:Property (make-name rdf: "Property"))
+(define rdf:type (make-name rdf: "type"))
 
-(define Bag (make-name *namespace* "Bag"))
-(define Seq (make-name *namespace* "Sequence"))
-(define Alt (make-name *namespace* "Alt"))
+(define rdf:Bag (make-name rdf: "Bag"))
+(define rdf:Seq (make-name rdf: "Sequence"))
+(define rdf:Alt (make-name rdf: "Alt"))
 
-(define List (make-name *namespace* "List"))
-(define first (make-name *namespace* "first"))
-(define rest (make-name *namespace* "rest"))
-(define nil (make-name *namespace* "nil"))
+(define rdf:List (make-name rdf: "List"))
+(define rdf:first (make-name rdf: "first"))
+(define rdf:rest (make-name rdf: "rest"))
+(define rdf:nil (make-name rdf: "nil"))
 
-(define Statement (make-name *namespace* "Statement"))
-(define subject (make-name *namespace* "subject"))
-(define predicate (make-name *namespace* "predicate"))
-(define object (make-name *namespace* "object"))
+(define rdf:Statement (make-name rdf: "Statement"))
+(define rdf:subject (make-name rdf: "subject"))
+(define rdf:predicate (make-name rdf: "predicate"))
+(define rdf:object (make-name rdf: "object"))
 
-(define value (make-name *namespace* "value"))
+(define rdf:value (make-name rdf: "value"))

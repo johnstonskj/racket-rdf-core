@@ -403,30 +403,30 @@ TBD
 TBD
 }
 
-@nested[#:style 'code-inset]{
-
 The generic interface @racket[gen:statement] has the following methods:
 
-@defproc[#:kind "method"
-         (get-subject
-          [stmt statement?])
-         subject?]{
-TBD
-}
+@nested[#:style 'inset]{
 
-@defproc[#:kind "method"
-         (get-predicate
-          [stmt statement?])
-         predicate?]{
-TBD
-}
+  @defproc[#:kind "method"
+           (get-subject
+            [stmt statement?])
+           subject?]{
+  Return the @italic{subject} component of the @racket[statement] structure.
+  }
 
-@defproc[#:kind "method"
-         (get-object
-          [stmt statement?])
-         object?]{
-TBD
-}
+  @defproc[#:kind "method"
+          (get-predicate
+           [stmt statement?])
+          predicate?]{
+  Return the @italic{predicate} component of the @racket[statement] structure.
+  }
+
+  @defproc[#:kind "method"
+           (get-object
+            [stmt statement?])
+           object?]{
+  Return the @italic{object} component of the @racket[statement] structure.
+  }
 
 }
 
@@ -1290,89 +1290,211 @@ From package @racket[rdf/core/dataset]:
 @subsection[]{RDF (v/rdf)}
 @defmodule[rdf/core/v/rdf]
 
-@defthing[*namespace* namespace?]{The @racket[namespace] structure for this vocabulary.}
+@defthing[rdf: namespace?]{The @racket[namespace] structure for this vocabulary.}
 
-@nested[#:style 'code-inset]{
-  This namespace defines the following names:
+@nested[#:style 'inset]{
+  This namespace defines the following class/type names:
 
-  TBD
+  @defthing[Alt name?]{The @racket[name] structure corresponding to the class @tt{rdf:Alt}.}
+  @defthing[Bag name?]{The @racket[name] structure corresponding to the class @tt{rdf:Bag}.}
+  @defthing[HTML name?]{The @racket[name] structure corresponding to the class @tt{rdf:HTML}.}
+  @defthing[List name?]{The @racket[name] structure corresponding to the class @tt{rdf:List}.}
+  @defthing[Property name?]{The @racket[name] structure corresponding to the class @tt{rdf:Property}.}
+  @defthing[Seq name?]{The @racket[name] structure corresponding to the class @tt{rdf:Seq}.}
+  @defthing[Statement name?]{The @racket[name] structure corresponding to the class @tt{rdf:Statement}.}
+  @defthing[XML-Literal name?]{The @racket[name] structure corresponding to the class @tt{rdf:XMLLiteral}.}
+
+  This namespace defines the following property names:
+
+  @defthing[first name?]{The @racket[name] structure corresponding to the property @tt{rdf:first}.}
+  @defthing[lang-String name?]{The @racket[name] structure corresponding to the property @tt{rdf:langString}.}
+  @defthing[nil name?]{The @racket[name] structure corresponding to the property @tt{rdf:nil}.}
+  @defthing[object name?]{The @racket[name] structure corresponding to the property @tt{rdf:object}.}
+  @defthing[predicate name?]{The @racket[name] structure corresponding to the property @tt{rdf:predicate}.}
+  @defthing[rest name?]{The @racket[name] structure corresponding to the property @tt{rdf:rest}.}
+  @defthing[subject name?]{The @racket[name] structure corresponding to the property @tt{rdf:subject}.}
+  @defthing[type name?]{The @racket[name] structure corresponding to the property @tt{rdf:type}.}
+  @defthing[value name?]{The @racket[name] structure corresponding to the property @tt{rdf:value}.}
 }
 
 @;{============================================================================}
 @subsection[]{RDF Schema (v/rdfs)}
 @defmodule[rdf/core/v/rdfs]
 
-@defthing[*namespace* namespace?]{The @racket[namespace] structure for this vocabulary.}
+@defthing[rdfs: namespace?]{The @racket[namespace] structure for this vocabulary.}
 
-@nested[#:style 'code-inset]{
+@nested[#:style 'inset]{
   This namespace defines the following names:
 
-  TBD
+  @defthing[rdfs:Class name?]{The @racket[name] structure corresponding to the class @tt{:Class}.}
+  @defthing[rdfs:Container name?]{The @racket[name] structure corresponding to the class @tt{:Container}.}
+  @defthing[rdfs:Container-Membership-Property name?]{The @racket[name] structure corresponding to the class @tt{:Container-Membership-Property}.}
+  @defthing[rdfs:Datatype name?]{The @racket[name] structure corresponding to the class @tt{:Datatype}.}
+  @defthing[rdfs:Literal name?]{The @racket[name] structure corresponding to the class @tt{:Literal}.}
+  @defthing[rdfs:Resource name?]{The @racket[name] structure corresponding to the class @tt{:Resource}.}
+
+  This namespace defines the following property names:
+
+  @defthing[rdfs:comment name?]{The @racket[name] structure corresponding to the property @tt{:comment}.}
+  @defthing[rdfs:domain name?]{The @racket[name] structure corresponding to the property @tt{:domain}.}
+  @defthing[rdfs:is-defined-by name?]{The @racket[name] structure corresponding to the property @tt{:isDefinedBy}.}
+  @defthing[rdfs:label name?]{The @racket[name] structure corresponding to the property @tt{:label}.}
+  @defthing[rdfs:member name?]{The @racket[name] structure corresponding to the property @tt{:member}.}
+  @defthing[rdfs:range name?]{The @racket[name] structure corresponding to the property @tt{:range}.}
+  @defthing[rdfs:see-also name?]{The @racket[name] structure corresponding to the property @tt{:seeAlso}.}
+  @defthing[rdfs:sub-class-of name?]{The @racket[name] structure corresponding to the property @tt{:sub-Class-Of}.}
+  @defthing[rdfs:sub-property-of name?]{The @racket[name] structure corresponding to the property @tt{:sub-Property-Of}.}
 }
 
 @;{============================================================================}
 @subsection[]{XML (v/xml)}
 @defmodule[rdf/core/v/xml]
 
-@defthing[*namespace* namespace?]{The @racket[namespace] structure for this vocabulary.}
+@defthing[xml: namespace?]{The @racket[namespace] structure for this vocabulary.}
 
 @nested[#:style 'code-inset]{
-  This namespace defines the following names:
+  This namespace defines the following property names:
 
-  @defthing[base name?]{The @racket[name] structure corresponding to the property @tt{xml:base}.}
-  @defthing[lang name?]{The @racket[name] structure corresponding to the property @tt{xml:lang}.}
-  @defthing[space name?]{The @racket[name] structure corresponding to the property @tt{xml:space}.}
+  @defthing[xml:base name?]{The @racket[name] structure corresponding to the property @tt{xml:base}.}
+  @defthing[xml:lang name?]{The @racket[name] structure corresponding to the property @tt{xml:lang}.}
+  @defthing[xml:space name?]{The @racket[name] structure corresponding to the property @tt{xml:space}.}
 }
 
 @;{============================================================================}
 @subsection[]{XML Schema (v/xsd)}
 @defmodule[rdf/core/v/xsd]
 
-@defthing[*namespace* namespace?]{The namespace structure for this vocabulary.}
+@defthing[*namespace* namespace?]{The namespace structure for the XML Schema (Part 2 -- Datatypes) vocabulary.}
 
-@nested[#:style 'code-inset]{
-  This namespace defines the following names:
+@nested[#:style 'inset]{
+  This namespace defines the following type/datatype names:
 
-  TBD
+  @defthing[xsd:any-simple-type name?]{The @racket[name] structure corresponding to the type @tt{xsd:anySimpleType}.}
+  @defthing[xsd:any-type name?]{The @racket[name] structure corresponding to the type @tt{xsd:anyType}.}
+  @defthing[xsd:any-uri name?]{The @racket[name] structure corresponding to the datatype @tt{xsd:anyURI}.}
+  @defthing[xsd:base64-binary name?]{The @racket[name] structure corresponding to the datatype @tt{xsd:base64Binary}.}
+  @defthing[xsd:boolean name?]{The @racket[name] structure corresponding to the datatype @tt{xsd:boolean}.}
+  @defthing[xsd:byte name?]{The @racket[name] structure corresponding to the datatype @tt{xsd:byte}.}
+  @defthing[xsd:date name?]{The @racket[name] structure corresponding to the datatype @tt{xsd:date}.}
+  @defthing[xsd:date-time name?]{The @racket[name] structure corresponding to the datatype @tt{xsd:dateTime}.}
+  @defthing[xsd:decimal name?]{The @racket[name] structure corresponding to the datatype @tt{xsd:decimal}.}
+  @defthing[xsd:double name?]{The @racket[name] structure corresponding to the datatype @tt{xsd:double}.}
+  @defthing[xsd:duration name?]{The @racket[name] structure corresponding to the datatype @tt{xsd:duration}.}
+  @defthing[xsd:entity name?]{The @racket[name] structure corresponding to the datatype @tt{xsd:ENTITY}.}
+  @defthing[xsd:float name?]{The @racket[name] structure corresponding to the datatype @tt{xsd:float}.}
+  @defthing[xsd:g-day name?]{The @racket[name] structure corresponding to the datatype @tt{xsd:gDay}.}
+  @defthing[xsd:g-month name?]{The @racket[name] structure corresponding to the datatype @tt{xsd:gMonth}.}
+  @defthing[xsd:g-month-day name?]{The @racket[name] structure corresponding to the datatype @tt{xsd:gMonthDay}.}
+  @defthing[xsd:g-year name?]{The @racket[name] structure corresponding to the datatype @tt{xsd:gYear}.}
+  @defthing[xsd:g-year-month name?]{The @racket[name] structure corresponding to the datatype @tt{xsd:gYearMonth}.}
+  @defthing[xsd:hex-binary name?]{The @racket[name] structure corresponding to the datatype @tt{xsd:hexBinary}.}
+  @defthing[xsd:id name?]{The @racket[name] structure corresponding to the datatype @tt{xsd:ID}.}
+  @defthing[xsd:id-ref name?]{The @racket[name] structure corresponding to the datatype @tt{xsd:IDREF}.}
+  @defthing[xsd:int name?]{The @racket[name] structure corresponding to the datatype @tt{xsd:int}.}
+  @defthing[xsd:integer name?]{The @racket[name] structure corresponding to the datatype @tt{xsd:integer}.}
+  @defthing[xsd:language name?]{The @racket[name] structure corresponding to the datatype @tt{xsd:language}.}
+  @defthing[xsd:long name?]{The @racket[name] structure corresponding to the datatype @tt{xsd:long}.}
+  @defthing[xsd:name name?]{The @racket[name] structure corresponding to the datatype @tt{xsd:Name}.}
+  @defthing[xsd:ncname name?]{The @racket[name] structure corresponding to the datatype @tt{xsd:NCNAME}.}
+  @defthing[xsd:negative-integer name?]{The @racket[name] structure corresponding to the datatype @tt{xsd:negativeInteger}.}
+  @defthing[xsd:nmtoken name?]{The @racket[name] structure corresponding to the datatype @tt{xsd:NMTOKEN}.}
+  @defthing[xsd:non-negative-integer name?]{The @racket[name] structure corresponding to the datatype @tt{xsd:nonNegativeInteger}.}
+  @defthing[xsd:non-positive-integer name?]{The @racket[name] structure corresponding to the datatype @tt{xsd:nonPositiveInteger}.}
+  @defthing[xsd:normalized-string name?]{The @racket[name] structure corresponding to the datatype @tt{xsd:normalizedString}.}
+  @defthing[xsd:positive-integer name?]{The @racket[name] structure corresponding to the datatype @tt{xsd:positiveInteger}.}
+  @defthing[xsd:q-name name?]{The @racket[name] structure corresponding to the datatype @tt{xsd:QName}.}
+  @defthing[xsd:q-notation name?]{The @racket[name] structure corresponding to the datatype @tt{xsd:QNotation}.}
+  @defthing[xsd:short name?]{The @racket[name] structure corresponding to the datatype @tt{xsd:short}.}
+  @defthing[xsd:string name?]{The @racket[name] structure corresponding to the datatype @tt{xsd:string}.}
+  @defthing[xsd:time name?]{The @racket[name] structure corresponding to the datatype @tt{xsd:time}.}
+  @defthing[xsd:token name?]{The @racket[name] structure corresponding to the datatype @tt{xsd:token}.}
+  @defthing[xsd:unsigned-byte name?]{The @racket[name] structure corresponding to the datatype @tt{xsd:unsignedByte}.}
+  @defthing[xsd:unsigned-int name?]{The @racket[name] structure corresponding to the datatype @tt{xsd:unsignedInt}.}
+  @defthing[xsd:unsigned-long name?]{The @racket[name] structure corresponding to the datatype @tt{xsd:unsignedLong}.}
+  @defthing[xsd:unsigned-short name?]{The @racket[name] structure corresponding to the datatype @tt{xsd:unsignedShort}.}
+
+  This namespace defines the following property names:
+
+  @defthing[xsd:enumeration name?]{The @racket[name] structure corresponding to the property @tt{xsd:enumeration}.}
+  @defthing[xsd:fraction-digits name?]{The @racket[name] structure corresponding to the property @tt{xsd:fractionDigits}.}
+  @defthing[xsd:length name?]{The @racket[name] structure corresponding to the property @tt{xsd:length}.}
+  @defthing[xsd:max-exclusive name?]{The @racket[name] structure corresponding to the property @tt{xsd:maxExclusive}.}
+  @defthing[xsd:max-inclusive name?]{The @racket[name] structure corresponding to the property @tt{xsd:maxInclusive}.}
+  @defthing[xsd:max-length name?]{The @racket[name] structure corresponding to the property @tt{xsd:maxLength}.}
+  @defthing[xsd:min-exclusive name?]{The @racket[name] structure corresponding to the property @tt{xsd:minExclusive}.}
+  @defthing[xsd:min-inclusive name?]{The @racket[name] structure corresponding to the property @tt{xsd:minInclusive}.}
+  @defthing[xsd:min-length name?]{The @racket[name] structure corresponding to the property @tt{xsd:minLength}.}
+  @defthing[xsd:pattern name?]{The @racket[name] structure corresponding to the property @tt{xsd:pattern}.}
+  @defthing[xsd:total-digits name?]{The @racket[name] structure corresponding to the property @tt{xsd:totalDigits}.}
+  @defthing[xsd:white-space name?]{The @racket[name] structure corresponding to the property @tt{xsd:whiteSpace}.}
 }
 
 @;{============================================================================}
 @subsection[]{Vocabulary of Interlinked Datasets (v/void)}
 @defmodule[rdf/core/v/void]
 
-@defthing[*namespace* namespace?]{The @racket[namespace] structure for this vocabulary.}
+@defthing[void: namespace?]{The @racket[namespace] structure for this vocabulary.}
 
-@nested[#:style 'code-inset]{
-  This namespace defines the following names:
+@nested[#:style 'inset]{
+  This namespace defines the following class/type names:
 
-  @defthing[classes name?]{The @racket[name] structure corresponding to the property @tt{void:classes}.}
-  @defthing[distinctSubjects name?]{The @racket[name] structure corresponding to the property @tt{void:distinctSubjects}.}
-  @defthing[distinctObjects name?]{The @racket[name] structure corresponding to the property @tt{void:distinctObjects}.}
-  @defthing[documents name?]{The @racket[name] structure corresponding to the property @tt{void:documents}.}
-  @defthing[entities name?]{The @racket[name] structure corresponding to the property @tt{void:entities}.}
-  @defthing[properties name?]{The @racket[name] structure corresponding to the property @tt{void:properties}.}
-  @defthing[triples name?]{The @racket[name] structure corresponding to the property @tt{void:triples}.}
+  @defthing[void:Dataset name?]{The @racket[name] structure corresponding to the class @tt{void:Dataset}. A set of RDF triples that are published, maintained or aggregated by a single provider.}
+  @defthing[void:Dataset-Description name?]{The @racket[name] structure corresponding to the class @tt{void:DatasetDescription}. A web resource whose @tt{foaf:primaryTopic} or @tt{foaf:topics} include @racket[void:Dataset]s.}
+  @defthing[void:Linkset name?]{The @racket[name] structure corresponding to the class @tt{void:Linkset}. 	A collection of RDF links between two @racket[void:Dataset]s.}
+  @defthing[void:Technical-Feature name?]{The @racket[name] structure corresponding to the class @tt{void:TechnicalFeature}. A technical feature of a @racket[void:Dataset], such as a supported RDF serialization format.}
+
+  This namespace defines the following property names:
+
+  @defthing[void:class name?]{The @racket[name] structure corresponding to the property @tt{void:class}. The @racket[rdfs:Class] that is the @racket[rdf:type] of all entities in a class-based partition.}
+  @defthing[void:class-partition name?]{The @racket[name] structure corresponding to the property @tt{void:classPartition}. A subset of a @racket[void:Dataset] that contains only the entities of a certain @racket[rdfs:Class].}
+  @defthing[void:classes name?]{The @racket[name] structure corresponding to the property @tt{void:classes}. The total number of distinct classes in a @racket[void:Dataset].}
+  @defthing[void:data-dump name?]{The @racket[name] structure corresponding to the property @tt{void:dataDump}. An RDF dump, partial or complete, of a @racket[void:Dataset].}
+  @defthing[void:distinct-objects name?]{The @racket[name] structure corresponding to the property @tt{void:distinctObjects}. The total number of distinct objects in a @racket[void:Dataset].}
+  @defthing[void:distinct-subjects name?]{The @racket[name] structure corresponding to the property @tt{void:distinctSubjects}. The total number of distinct subjects in a @racket[void:Dataset].}
+  @defthing[void:documents name?]{The @racket[name] structure corresponding to the property @tt{void:documents}. The total number of documents, for @racket[void:Dataset]s that are published as a set of individual RDF documents.}
+  @defthing[void:entities name?]{The @racket[name] structure corresponding to the property @tt{void:entities}. The total number of entities that are described in a @racket[void:Dataset].}
+  @defthing[void:example-resource name?]{The @racket[name] structure corresponding to the property @tt{void:exampleResource}. An example entity that is representative for the entities described in a @racket[void:Dataset].}
+  @defthing[void:feature name?]{The @racket[name] structure corresponding to the property @tt{void:feature}. A @racket[void:TechnicalFeature] supported by a @racket[void:Datset].}
+  @defthing[void:in-dataset name?]{The @racket[name] structure corresponding to the property @tt{void:inDataset}. Points to the @racket[void:Dataset] that a document is a part of.}
+  @defthing[void:link-predicate name?]{The @racket[name] structure corresponding to the property @tt{void:linkPredicate}. Specifies the RDF property of the triples in a @racket[void:Linkset].}
+  @defthing[void:objects-target name?]{The @racket[name] structure corresponding to the property @tt{void:objectsTarget}. The @racket[void:Dataset] that contains the resources in the object position of a @racket[void:Linkset]'s triples.}
+  @defthing[void:opensearch-description name?]{The @racket[name] structure corresponding to the property @tt{void:openSearchDescription}. An OpenSearch description document for a free-text search service over a @racket[void:Dataset].}
+  @defthing[void:properties name?]{The @racket[name] structure corresponding to the property @tt{void:properties}. The total number of distinct properties in a @racket[void:Dataset].}
+  @defthing[void:property name?]{The @racket[name] structure corresponding to the property @tt{void:property}. The @racket[rdf:Property] that is the predicate of all triples in a property-based partition.}
+  @defthing[void:property-partition name?]{The @racket[name] structure corresponding to the property @tt{void:propertyPartition}. A subset of a @racket[void:Dataset] that contains only the triples of a certain @racket[rdf:Property].}
+  @defthing[void:root-resource name?]{The @racket[name] structure corresponding to the property @tt{void:rootResource}. A top concept or entry point for a @racket[void:Dataset] that is structured in a tree-like fashion.}
+  @defthing[void:sparql-endpoint name?]{The @racket[name] structure corresponding to the property @tt{void:sparqlEndpoint}. A SPARQL protocol endpoint that allows SPARQL query access to a @racket[void:Dataset].}
+  @defthing[void:subjects-target name?]{The @racket[name] structure corresponding to the property @tt{void:subjectsTarget}. The @racket[void:Dataset] that contains the resources in the subject position of this @racket[void:Linkset]'s triples.}
+  @defthing[void:subset name?]{The @racket[name] structure corresponding to the property @tt{void:subset}. A @racket[void:Dataset] that is part of another @racket[void:Dataset].}
+  @defthing[void:target name?]{The @racket[name] structure corresponding to the property @tt{void:target}. One of the two @racket[void:Datasets] connected by this @racket[void:Linkset].}
+  @defthing[void:triples name?]{The @racket[name] structure corresponding to the property @tt{void:triples}. The total number of triples contained in a @racket[void:Dataset].}
+  @defthing[void:uri-lookup-endpoint name?]{The @racket[name] structure corresponding to the property @tt{void:uriLookupEndpoint}. A protocol endpoint for simple URI lookups for a @racket[void:Dataset].}
+  @defthing[void:uri-regex-pattern name?]{The @racket[name] structure corresponding to the property @tt{void:uriRegexPattern}. A regular expression that matches the URIs of a @racket[void:Dataset]'s entities.}
+  @defthing[void:uri-space name?]{The @racket[name] structure corresponding to the property @tt{void:uriSpace}. A URI that is a common string prefix of all the entity URIs in a @racket[void:Datset].}
+  @defthing[void:vocabulary name?]{The @racket[name] structure corresponding to the property @tt{void:vocabulary}. A vocabulary or @racket[owl:Ontology] whose classes or properties are used in a @racket[void:Dataset].}
 }
 
 @;{============================================================================}
 @subsection[]{SPARQL Service Description (v/sd)}
 @defmodule[rdf/core/v/sd]
 
-@defthing[*namespace* namespace?]{The @racket[namespace] structure for this vocabulary.}
+@defthing[sd: namespace?]{The @racket[namespace] structure for this vocabulary.}
 
-@nested[#:style 'code-inset]{
-  This namespace defines the following names:
+@nested[#:style 'inset]{
+  This namespace defines the following class/type names:
 
-  @defthing[Dataset name?]{The @racket[name] structure corresponding to the class @tt{sd:Dataset}.}
-  @defthing[Graph name?]{The @racket[name] structure corresponding to the class @tt{sd:Graph}.}
-  @defthing[NamedGraph name?]{The @racket[name] structure corresponding to the class @tt{sd:NamedGraph}.}
-  @defthing[GraphCollection name?]{The @racket[name] structure corresponding to the class @tt{sd:GraphCollection}.}
+  @defthing[sd:Dataset name?]{The @racket[name] structure corresponding to the class @tt{sd:Dataset}.}
+  @defthing[sd:Graph name?]{The @racket[name] structure corresponding to the class @tt{sd:Graph}.}
+  @defthing[sd:GraphCollection name?]{The @racket[name] structure corresponding to the class @tt{sd:GraphCollection}.}
+  @defthing[sd:NamedGraph name?]{The @racket[name] structure corresponding to the class @tt{sd:NamedGraph}.}
 
-  @defthing[defaultDataset name?]{The @racket[name] structure corresponding to the property @tt{sd:defaultDataset}.}
-  @defthing[defaultGraph name?]{The @racket[name] structure corresponding to the property @tt{sd:defaultGraph}.}
-  @defthing[graph name?]{The @racket[name] structure corresponding to the property @tt{sd:graph}.}
-  @defthing[name name?]{The @racket[name] structure corresponding to the property @tt{sd:name}.}
-  @defthing[namedGraph name?]{@racket[name] name structure corresponding to the property @tt{sd:namedGraph}.}
+  This namespace defines the following property names:
+
+  @defthing[sd:defaultDataset name?]{The @racket[name] structure corresponding to the property @tt{sd:defaultDataset}.}
+  @defthing[sd:defaultGraph name?]{The @racket[name] structure corresponding to the property @tt{sd:defaultGraph}.}
+  @defthing[sd:graph name?]{The @racket[name] structure corresponding to the property @tt{sd:graph}.}
+  @defthing[sd:name name?]{The @racket[name] structure corresponding to the property @tt{sd:name}.}
+  @defthing[sd:namedGraph name?]{@racket[name] name structure corresponding to the property @tt{sd:namedGraph}.}
 }
 
 @;{============================================================================}

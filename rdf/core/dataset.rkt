@@ -6,7 +6,7 @@
          "./graph.rkt"
          "./statement.rkt"
          "./triple.rkt"
-         (prefix-in sd: (only-in "./v/sd.rkt" Dataset)))
+         (only-in "./v/sd.rkt" sd:Dataset))
 
 (provide (struct-out dataset)
          dataset-empty?

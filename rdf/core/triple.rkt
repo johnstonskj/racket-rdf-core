@@ -7,7 +7,7 @@
          ;; --------------------------------------
          "./literal.rkt"
          "./statement.rkt"
-         (prefix-in rdf: (except-in "./v/rdf.rkt" *namespace*)))
+         "./v/rdf.rkt")
 
 (provide (struct-out triple)
          make-triple

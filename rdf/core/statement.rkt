@@ -3,11 +3,9 @@
 (require racket/contract
          racket/generic
          ;; --------------------------------------
-         net/url-structs
-         ;; --------------------------------------
          "./literal.rkt"
          "./namespace.rkt"
-         (prefix-in rdf: (except-in "./v/rdf.rkt" *namespace*)))
+         "./v/rdf.rkt")
 
 (provide (except-out (struct-out blank-node)
                      internal-make-blank-node)

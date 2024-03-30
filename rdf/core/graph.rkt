@@ -17,10 +17,8 @@
          "./statement.rkt"
          "./triple.rkt"
          ;; --------------------------------------
-         (prefix-in sd: (except-in "./v/sd.rkt" *namespace*))
-         (prefix-in void:
-                    (except-in "./v/void.rkt" *namespace*))
-         (rename-in "./v/void.rkt" (*namespace* void:)))
+         "./v/sd.rkt"
+         "./v/void.rkt")
 
 (provide (except-out (struct-out graph)
                      internal-make-graph)
@@ -234,9 +232,9 @@
         (make-triple subject sd:graph graph-node)
         (make-type-statement graph-node sd:Graph)
         (make-triple graph-node void:triples (graph-count graph))
-        (make-triple graph-node void:distinctSubjects (count (graph-distinct-subjects graph)))
+        (make-triple graph-node void:distinct-subjects (count (graph-distinct-subjects graph)))
         (make-triple graph-node void:properties (count (graph-distinct-predicates graph)))
-        (make-triple graph-node void:distinctObjects (count (graph-distinct-objects graph))))))))
+        (make-triple graph-node void:distinct-objects (count (graph-distinct-objects graph))))))))
 
 ;; -------------------------------------------------------------------------------------------------
 ;; Macros
