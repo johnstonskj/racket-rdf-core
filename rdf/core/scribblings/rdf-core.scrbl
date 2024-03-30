@@ -1287,7 +1287,7 @@ From package @racket[rdf/core/dataset]:
 @section[]{Vocabulary Modules}
 
 @;{============================================================================}
-@subsection[]{RDF (v/rdf)}
+@subsection[]{RDF}
 @defmodule[rdf/core/v/rdf]
 
 @defthing[rdf: namespace?]{The @racket[namespace] structure for this vocabulary.}
@@ -1318,7 +1318,7 @@ From package @racket[rdf/core/dataset]:
 }
 
 @;{============================================================================}
-@subsection[]{RDF Schema (v/rdfs)}
+@subsection[]{RDF Schema}
 @defmodule[rdf/core/v/rdfs]
 
 @defthing[rdfs: namespace?]{The @racket[namespace] structure for this vocabulary.}
@@ -1347,7 +1347,7 @@ From package @racket[rdf/core/dataset]:
 }
 
 @;{============================================================================}
-@subsection[]{XML (v/xml)}
+@subsection[]{XML}
 @defmodule[rdf/core/v/xml]
 
 @defthing[xml: namespace?]{The @racket[namespace] structure for this vocabulary.}
@@ -1361,7 +1361,7 @@ From package @racket[rdf/core/dataset]:
 }
 
 @;{============================================================================}
-@subsection[]{XML Schema (v/xsd)}
+@subsection[]{XML Schema Datatypes}
 @defmodule[rdf/core/v/xsd]
 
 @defthing[*namespace* namespace?]{The namespace structure for the XML Schema (Part 2 -- Datatypes) vocabulary.}
@@ -1430,7 +1430,7 @@ From package @racket[rdf/core/dataset]:
 }
 
 @;{============================================================================}
-@subsection[]{Vocabulary of Interlinked Datasets (v/void)}
+@subsection[]{Vocabulary of Interlinked Datasets}
 @defmodule[rdf/core/v/void]
 
 @defthing[void: namespace?]{The @racket[namespace] structure for this vocabulary.}
@@ -1475,7 +1475,7 @@ From package @racket[rdf/core/dataset]:
 }
 
 @;{============================================================================}
-@subsection[]{SPARQL Service Description (v/sd)}
+@subsection[]{SPARQL Service Description}
 @defmodule[rdf/core/v/sd]
 
 @defthing[sd: namespace?]{The @racket[namespace] structure for this vocabulary.}
