@@ -31,7 +31,7 @@
 ;; -------------------------------------------------------------------------------------------------
 
 (define/contract (ncname? val)
-  (-> (or/c symbol? string?) boolean?)
+  (-> any/c boolean?)
   (cond
     ((symbol? val)
      (ncname? (symbol->string val)))
@@ -48,6 +48,19 @@
 (define/contract (symbol->ncname sym)
   (-> symbol? (or/c string? #f))
   (string->ncname (symbol->string sym)))
+
+(define/contract (qname? val)
+  (-> any/c boolean?)
+  (cond
+    ((symbol? val) (qname? (symbol->string val)))
+    ((string? val)
+     (let ((split (string-split val *qname-separator*)))
+       (or (and (= (length split) 1)
+                (or (string-prefix? val *qname-separator*) (string-suffix? val *qname-separator*))
+                (ncname? (car split)))
+           (and (= (length split) 2)
+                (andmap ncname? split)))))
+    (else #f)))
 
 (define name-start-char/c
   (or/c
@@ -79,19 +92,6 @@
 
 (define *qname-separator* ":")
 
-(define/contract (qname? val)
-  (-> (or/c symbol? string?) boolean?)
-  (cond
-    ((symbol? val) (qname? (symbol->string val)))
-    ((string? val)
-     (let ((split (string-split val *qname-separator*)))
-       (or (and (= (length split) 1)
-                (or (string-prefix? val *qname-separator*) (string-suffix? val *qname-separator*))
-                (ncname? (car split)))
-           (and (= (length split) 2)
-                (andmap ncname? split)))))
-    (else #f)))
-
 ;; -------------------------------------------------------------------------------------------------
 ;; Additional URL predicate
 ;; -------------------------------------------------------------------------------------------------
@@ -122,29 +122,31 @@
   #:guard (struct-guard/c url-absolute? ncname?))
 
 (define/contract (make-namespace url prefix)
-  (-> (or/c string? url?) (or/c symbol? string?) namespace?)
-  (let ((url (cond
-               ((url? url) url)
-               ((string? url) (string->url url))))
-        (prefix (cond
-                  ((symbol? prefix) (symbol->string prefix))
-                  (else prefix))))
+  (-> (or/c url-absolute? string?) (or/c ncname? symbol? string?) namespace?)
+  (let* ((url-str (if (url? url) (url->string url) url))
+         (url (if (or (string-suffix? url-str "/") (string-suffix? url-str "#"))
+                   (if (url? url) url (string->url url-str))
+                   (string->url (append url-str "#"))))
+         (prefix (cond
+                   ((ncname? prefix) prefix)
+                   ((symbol? prefix) (symbol->string prefix))
+                   (else (string->ncname prefix)))))
     (internal-make-namespace url prefix)))
 
 (define/contract (namespace-make-url ns name)
-  (-> namespace? ncname? url?)
+  (-> namespace? ncname? url-absolute?)
   (when (and (namespace? ns) (ncname? name))
     (string->url (string-append (url->string (namespace-url ns)) name))))
 
 (define/contract (namespace-make-qname ns name)
   (-> namespace? ncname? qname?)
   (when (and (namespace? ns) (ncname? name))
-    (string-append (namespace-prefix ns) ":" name)))
+    (string-append (namespace-prefix ns) *qname-separator* name)))
 
 (define/contract (namespace-make-default-qname ns)
   (-> namespace? qname?)
   (when (namespace? ns)
-      (string-append (namespace-prefix ns) ":")))
+      (string-append (namespace-prefix ns) *qname-separator*)))
 
 ;; -------------------------------------------------------------------------------------------------
 ;; TODO `define-namespace` macro

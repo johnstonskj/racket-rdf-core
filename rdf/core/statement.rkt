@@ -32,7 +32,8 @@
 ;; `blank-node` types
 ;; -------------------------------------------------------------------------------------------------
 
-(define shared-blank-node-counter 1)
+;; pick a random starting point so clients don't assume we start from 1 every time!
+(define shared-blank-node-counter (random 1 1000))
 (define shared-blank-node-sem (make-semaphore 1))
 
 (define (make-blank-node-label)
@@ -77,6 +78,11 @@
                    (get-predicate (-> any-statement? predicate?))
                    (get-object (-> any-statement? object?))))
 
+(define statement-constructor/c
+  (-> subject? predicate? object? statement/c))
+
+(define statement-list? (listof any-statement?))
+
 ;; -------------------------------------------------------------------------------------------------
 
 (define (statement->list stmt)
@@ -91,9 +97,3 @@
      (list blank-node rdf:subject (get-subject stmt))
      (list blank-node rdf:predicate (get-predicate stmt))
      (list blank-node rdf:object (get-object stmt)))))
-
-;; -------------------------------------------------------------------------------------------------
-;; Statement Lists
-;; -------------------------------------------------------------------------------------------------
-
-(define statement-list? (listof any-statement?))

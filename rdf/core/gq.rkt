@@ -27,29 +27,35 @@
 ;; Component-level Patterns
 ;; -------------------------------------------------------------------------------------------------
 
-(define pattern-component?
+(define/contract pattern-component?
+  (-> any/c boolean?)
   (or/c
    false?
    (cons/c object? procedure?)
    ncname?))
 
-(define (ignore)
+(define/contract (ignore)
+  (-> pattern-component?)
   #f)
 
-(define (ignore? val)
+(define/contract (ignore? val)
+  (-> pattern-component? boolean?)
   (false? val))
 
 (define (comparitor value (operator equal?))
   (when (and (object? value) (procedure? operator))
     (cons value operator)))
 
-(define (comparitor? val)
+(define/contract (comparitor? val)
+  (-> pattern-component? boolean?)
   (pair? val))
 
-(define (variable name)
-  (when (ncname? name) name))
+(define/contract (variable name)
+  (-> ncname? pattern-component?)
+  name)
 
-(define (variable? val)
+(define/contract (variable? val)
+  (-> pattern-component? boolean?)
   (ncname? val))
 
 (define (component-match pattern value)
@@ -67,13 +73,9 @@
 
 (define statement-pattern? (list/c pattern-component? pattern-component? pattern-component?))
 
-(define (statement-pattern-match pattern statement)
-  (let ((subject (component-match (first pattern) (get-subject statement)))
-        (predicate (component-match (second pattern) (get-predicate statement)))
-        (object (component-match (third pattern) (get-object statement))))
-    (if (and subject predicate object)
-        (filter cons? (list subject predicate object))
-        #false)))
+(define/contract (make-statement-pattern subject predicate object)
+  (-> pattern-component? pattern-component? pattern-component? statement-pattern?)
+  (list subject predicate object))
 
 ;; -------------------------------------------------------------------------------------------------
 ;; Query and Results
@@ -82,6 +84,14 @@
 (define result-variable-value? (cons/c string? object?))
 (define result-statement? (listof result-variable-value?))
 (define results? (listof result-statement?))
+
+(define (statement-pattern-match pattern statement)
+  (let ((subject (component-match (first pattern) (get-subject statement)))
+        (predicate (component-match (second pattern) (get-predicate statement)))
+        (object (component-match (third pattern) (get-object statement))))
+    (if (and subject predicate object)
+        (filter cons? (list subject predicate object))
+        #false)))
 
 (define (graph-query graph pattern)
   (filter-map

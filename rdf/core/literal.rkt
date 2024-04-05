@@ -8,7 +8,8 @@
          net/url-string
          net/url-structs
          ;; --------------------------------------
-         "./lang.rkt"
+         langtag
+         ;; --------------------------------------
          "./namespace.rkt"
          "./v/rdf.rkt"
          "./v/xsd.rkt")

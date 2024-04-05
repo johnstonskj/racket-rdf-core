@@ -56,7 +56,7 @@
          make-dataset
          dataset?
          dataset-empty?
-         dataset-has-key?
+         dataset-has-named?
          dataset-has-default?
          dataset-ref
          dataset-ref-default

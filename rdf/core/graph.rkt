@@ -10,6 +10,7 @@
          net/url-string
          net/url-structs
          ;; --------------------------------------
+         rx
          uuid
          ;; --------------------------------------
          "./namespace.rkt"
@@ -100,15 +101,6 @@
 (define (graph-order graph)
   (set-count (set-union (graph-distinct-subjects graph) (graph-distinct-objects graph))))
 
-(define (graph-distinct-subjects graph)
-  (list->set (map (λ (stmt) (get-subject stmt)) (graph-statements graph))))
-
-(define (graph-distinct-predicates graph)
-  (list->set (map (λ (stmt) (get-predicate stmt)) (graph-statements graph))))
-
-(define (graph-distinct-objects graph)
-  (list->set (map (λ (stmt) (get-object stmt)) (graph-statements graph))))
-
 ;; -------------------------------------------------------------------------------------------------
 
 (define (graph-member? graph statement)
@@ -149,6 +141,15 @@
 
 ;; -------------------------------------------------------------------------------------------------
 
+(define (graph-distinct-subjects graph)
+  (list->set (map (λ (stmt) (get-subject stmt)) (graph-statements graph))))
+
+(define (graph-distinct-predicates graph)
+  (list->set (map (λ (stmt) (get-predicate stmt)) (graph-statements graph))))
+
+(define (graph-distinct-objects graph)
+  (list->set (map (λ (stmt) (get-object stmt)) (graph-statements graph))))
+
 (define (graph-filter proc graph)
   (filter proc (graph-statements graph)))
 
@@ -181,10 +182,25 @@
                 new-url))))
         (else node)))
 
+(define single-name
+  (rx/or-group
+   rx/match-alnum ;; single char name
+   (rx/and (rx/repeat (rx/and rx/match-alnum ;; << may not start with "-"
+                              (rx/match rx/range-alnum "-"))
+                      #:upper 61)
+           ;; v- may not end with "-"
+           rx/match-alnum)))
+
+(define host-name-regexp
+  (pregexp
+   (rx/string-exactly
+    (rx/and single-name (rx/and-group "." single-name #:repeat 'one-or-more)))))
+
 (define/contract (skolem-url? url)
   (-> url? boolean?)
   (and (url? url)
        (string-prefix? (url-scheme url) "http")
+       (regexp-match host-name-regexp (url-host url))
        (url-path-absolute? url)
        (let ((path (url-path url)))
          (and (>= (length path) 3)

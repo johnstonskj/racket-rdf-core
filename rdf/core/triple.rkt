@@ -36,9 +36,13 @@
    (define (get-predicate triple) (triple-predicate triple))
    (define (get-object triple) (triple-object triple))))
 
+(define/contract (list->triple stmt)
+  (-> (list/c subject? predicate? object?) triple?)
+  (apply make-triple stmt))
+
 (define/contract (statement->reified-triples stmt)
   (-> statement? (listof triple?))
-  (map make-triple (statement->reified-list stmt)))
+  (map list->triple (statement->reified-list stmt)))
 
 (define/contract (make-reified-triples subject predicate object)
   (-> subject? predicate? object? (listof triple?))

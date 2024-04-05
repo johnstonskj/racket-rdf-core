@@ -1,5 +1,5 @@
-Racket Package rdf-core
-========
+# Racket Package rdf-core
+
 This is the core data model for RDF in Racket, it also includes core vocabularies (such as `rdf`, `rdfs`, `xml`, and `xsd`) as
 well as some basic IO functions. The goal of this package is to provide the model allowing the user to create
 statements, graphs and datasets in-memory. Additional Racket packages provide capabilities layered on top of this such

@@ -2,6 +2,7 @@
 
 (require racket/contract
          racket/list
+         racket/set
          ;; --------------------------------------
          "./graph.rkt"
          "./statement.rkt"
@@ -11,7 +12,7 @@
 (provide (struct-out dataset)
          dataset-empty?
          dataset-count
-         dataset-has-key?
+         dataset-has-named?
          dataset-has-default?
          dataset-ref
          dataset-ref-default
@@ -31,15 +32,24 @@
   #:constructor-name make-dataset
   #:guard (struct-guard/c resource? (hash/c graph-name? graph?)))
 
+;; -------------------------------------------------------------------------------------------------
+
 (define/contract (dataset-empty? ds)
   (-> dataset? boolean?)
   (hash-empty? (dataset-graphs ds)))
+
+;; -------------------------------------------------------------------------------------------------
 
 (define/contract (dataset-count ds)
   (-> dataset? exact-nonnegative-integer?)
   (hash-count (dataset-graphs ds)))
 
-(define/contract (dataset-has-key? ds name)
+(define (dataset-order graph)
+  (set-count (set-union (dataset-distinct-subjects graph) (dataset-distinct-objects graph))))
+
+;; -------------------------------------------------------------------------------------------------
+
+(define/contract (dataset-has-named? ds name)
   (-> dataset? subject? boolean?)
   (hash-has-key? (dataset-graphs ds) name))
 
@@ -75,6 +85,8 @@
 (define (dataset-clear! ds)
   (hash-clear! (dataset-graphs ds)))
 
+;; -------------------------------------------------------------------------------------------------
+
 (define (dataset-map ds proc (try-order? #f))
   (hash-map (dataset-graphs ds) proc try-order?))
 
@@ -86,6 +98,19 @@
 
 (define (dataset->list ds (try-order? #f))
   (hash->list (dataset-graphs ds) try-order?))
+
+;; -------------------------------------------------------------------------------------------------
+
+(define (dataset-distinct-subjects ds)
+  (apply set-union (map (λ (graph) (graph-distinct-subjects graph)) (dataset-graphs ds))))
+
+(define (dataset-distinct-predicates ds)
+  (apply set-union (map (λ (graph) (graph-distinct-predicates graph)) (dataset-graphs ds))))
+
+(define (dataset-distinct-objects ds)
+  (apply set-union (map (λ (graph) (graph-distinct-objects graph)) (dataset-graphs ds))))
+
+;; -------------------------------------------------------------------------------------------------
 
 (define (describe-dataset ds)
   (append
