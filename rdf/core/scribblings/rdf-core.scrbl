@@ -1,7 +1,10 @@
 #lang scribble/manual
 
 @(require racket/sandbox
+          scribble/core
           scribble/eval
+          scribble/html-properties
+          langtag
           rdf/core/namespace
           rdf/core/literal
           rdf/core/statement
@@ -11,7 +14,9 @@
           rdf/core/dataset
           rdf/core/gq
           rdf/core/io
-          (for-label rdf/core/namespace
+          (for-label langtag
+                     racket/contract
+                     rdf/core/namespace
                      rdf/core/literal
                      rdf/core/statement
                      rdf/core/triple
@@ -19,22 +24,25 @@
                      rdf/core/graph
                      rdf/core/dataset
                      rdf/core/gq
-                     rdf/core/io
-                     racket/contract))
+                     rdf/core/io))
 
 @;{============================================================================}
 
 @(define example-eval
    (make-base-eval '(require rdf/core/namespace
                              rdf/core/literal
-                             rdf/core/statement)))
+                             rdf/core/statement))) 
+
+@(define compact-list
+   (make-style "Compact"
+   (list (make-css-addition "scribblings/compact.css"))))
 
 @;{============================================================================}
 
 @title[#:version  "0.1.0"]{RDF Core Data Model}
 @author[(author+email "Simon Johnston" "johnstonskj@gmail.com")]
 
-This is the core data model for RDF in Racket, it also includes core vocabularies such as @tt{rdf}, @tt{rdfs}, @tt{xml},
+This is the core data model for RDF @cite["RDF11CAS"] in Racket, it also includes core vocabularies such as @tt{rdf}, @tt{rdfs}, @tt{xml},
 and @tt{xsd} as well as some basic IO functions. The goal of this package is to provide the model allowing the user to
 create statements, graphs and datasets in-memory. Additional Racket packages provide capabilities layered on top of this
 such as support for OWL and SPARQL and additional vocabularies.
@@ -46,12 +54,80 @@ such as support for OWL and SPARQL and additional vocabularies.
 @section[#:style '(toc)]{Module namespace}
 @defmodule[rdf/core/namespace]
 
-This package actually models XML namespaces where a namespace is an absolute URI (or IRI for RDF) and which may be
+This package actually models XML @cite["XML11"] namespaces, where a namespace is an absolute URI @cite["RFC3986"] (or IRI for RDF) and which may be
 associated with a prefix name. Members in the namespace have names which are concatenated onto the namespace URI, or
 may be referenced as qualified names (@italic{qnames}) in the form @tt{prefix:name}.
 
+
 @local-table-of-contents[]
 
+@;{============================================================================}
+@subsection[]{Background and Definitions}
+
+The following example shows the use of the RDF, RDF Schema, and Friend-of-a-Friend namespaces to construct an RDF/XML @cite["RDF11XML"]
+document. 
+
+@nested[#:style 'code-inset]{
+@verbatim|{
+<rdf:RDF
+  xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#"
+  xmlns:rdfs="http://www.w3.org/2000/01/rdf-schema#"
+  xmlns:foaf="http://xmlns.com/foaf/0.1/">
+
+  <foaf:Person rdf:ID="me">
+    <foaf:name xml:lang="en">Henry Rzepa</foaf:name>
+    <foaf:givenname>Henry</foaf:givenname>
+    <foaf:family_name>Rzepa</foaf:family_name>
+    <foaf:title>Professor</foaf:title>
+    <foaf:img rdf:resource="http://www.ch.ic.ac.uk/rzepa/rzepa_2005.jpg"/>
+    <foaf:nick>rzepa</foaf:nick>
+    <foaf:homepage rdf:resource="http://www.imperial.ac.uk/people/h.rzepa/"/>
+    <foaf:schoolHomepage rdf:resource="http://www.imperial.ac.uk/"/>
+    <foaf:weblog rdf:resource="http://www.ch.ic.ac.uk/rzepa/blog/"/>
+  </foaf:Person>
+</rdf:RDF>
+}|
+}
+
+The same content in Turtle @cite["RDF11TTL"] syntax is:
+
+@nested[#:style 'code-inset]{
+@verbatim|{
+@prefix foaf: <http://xmlns.com/foaf/0.1/> .
+
+<http://example.com/people/#me>
+  a foaf:Person ;
+  foaf:name "Henry Rzepa"@en ;
+  foaf:givenname "Henry" ;
+  foaf:family_name "Rzepa" ;
+  foaf:title "Professor" ;
+  foaf:img <http://www.ch.ic.ac.uk/rzepa/rzepa_2005.jpg> ;
+  foaf:nick "rzepa" ;
+  foaf:homepage <http://www.imperial.ac.uk/people/h.rzepa/> ;
+  foaf:schoolHomepage <http://www.imperial.ac.uk/> ;
+  foaf:weblog <http://www.ch.ic.ac.uk/rzepa/blog/> .
+}|
+}
+
+@itemlist[
+  #:style compact-list
+  @item{A @bold{namespace} is a named collection of @italic{name}s; a namespace's name is an IRI.}
+  @item{A @bold{name}, or  @bold{namespaced-name}, is a unique identifier within a @italic{namespace}. The type for this
+  identifier is the XML Production @tt{NCName} -- see @racket[ncname?].}
+  @item{A @bold{prefix} is a short identifier used in place of a namespace IRI. The type for this identifier is the XML
+  Production @tt{NCName} -- see @racket[ncname?].}
+  @item{A @bold{binding} is a pair consisting of a @italic{prefix} and @italic{namespace} IRI.}
+  @item{A @italic{namespace} @bold{map} is a bi-directional mapping from a set of @italic{prefix}es to
+  @italic{namespace}
+  IRIs.}
+  @item{A @bold{default} @italic{namespace} is a namespace binding where the prefix is empty. A @italic{namespace map}
+  may therefore only have a single default.}
+  @item{A @bold{qualified} name is a combination of a @italic{prefix} identifier and @italic{name} identifier. The type
+  for this value is the XML Production @tt{QName} -- see @racket[qname?].}
+]
+
+
+@;{============================================================================}
 @subsection[]{Identifier Names}
 
 @defproc[#:kind "predicate"
@@ -102,6 +178,10 @@ Returns a mutable string whose characters are the same as in @italic{val}, if it
 @;{============================================================================}
 @subsection[]{Namespaces}
 
+For the @italic{url} component of a namespace, the contract @racket[url-absolute?] is a minimal requirement.
+if the parameter @racket[ensure-namespace-url-safety] is @racket[#t] the contract is actually
+@racket[url-namespace-safe?].
+
 @defstruct*[namespace
             ([url url-absolute?]
             [prefix ncname?])]{
@@ -112,10 +192,9 @@ namespace but also holds the default prefix @tt{NCName}.
 @defproc[#:kind "constructor"
          (make-namespace
           [url (or/c url-absolute? string?)]
-          [prefix (or/c ncname? symbol? string?)])
+          [prefix ncname?])
          namespace?]{
-Returns a new @racket[namespace] structure. Note that if the URI does not end in either "/" or "#" the value "#" is
-appended to the URI.
+Returns a new @racket[namespace] structure. 
 }
 
 @defproc[#:kind "constructor"
@@ -131,7 +210,7 @@ Returns a new URI by appending the value of @italic{name} to the namespace's URI
   (url->string
     (namespace-make-url
       (make-namespace "http://example.com/schema/things#" "things")
-      '"ThingOne"))
+      "ThingOne"))
 ]
 }
 
@@ -177,6 +256,43 @@ Predicate to check that the value @italic{val} is a @racket[url?] struct, and is
 ]
 }
 
+@defproc[#:kind "predicate"
+         (url-namespace-safe?
+          [val any/c])
+         boolean?]{
+Predicate to check that the value @italic{val} is a @racket[url-absolute?], and either ends in a path separator "/" or an
+empty fragment identifier "#".
+
+@examples[
+  #:eval example-eval
+  (require net/url-string)
+  (url-namespace-safe? (string->url "/some/other/path"))
+  (url-namespace-safe? (string->url "http://example.com/some/path"))
+  (url-namespace-safe? (string->url "http://example.org/schema/nspace#"))
+  (url-namespace-safe? (string->url "http://example.org/schema/nspace/"))
+  (url-namespace-safe? (string->url "http://example.org/"))
+]
+}
+
+@defparam[ensure-namespace-url-safety namespace-safe namespace-safe? #:value #t]{
+When set to @racket[#t] constructors that accept URI values intended as namespace identifiers will fail with a contract
+exception if the value is not @racket[url-namespace-safe?].
+
+
+@examples[
+  #:eval example-eval
+  (require net/url-string)
+  (parameterize ((ensure-namespace-url-safety #f))
+    (make-namespace (string->url "http://example.org/schema/nspace#") 'schema)
+    (make-namespace (string->url "http://example.org/schema/nspace") 'schema)
+    #t)
+  (parameterize ((ensure-namespace-url-safety #t))
+    (make-namespace (string->url "http://example.org/schema/nspace#") 'schema)
+    (make-namespace (string->url "http://example.org/schema/nspace") 'schema)
+    #t)
+]
+}
+
 @;{============================================================================}
 @subsection[]{Namespaced Names}
 
@@ -194,6 +310,25 @@ Models a namespaced-name in XML.
 Returns a new @racket[name] from the @italic{namespace} and the value of @italic{name}.
 }
 
+@defproc[(url->namespace+name
+          [url url-absolute?])
+         (or/c (cons/c url-absolute? string?) #f)]{
+If the value of @italic{url} has a fragment part, return @italic{url} minus the fragment as the namespace and the
+fragment value as the name. If the value of @italic{url} has a path with a final segment, return @italic{url} minus the
+final path segment as the namespace and the path's final segment value as the name. If neither of these conditions are
+met the URI is not a valid namespaced-name and the value @racket[#f] is returned.
+
+@examples[
+  #:eval example-eval
+  (url->namespace+name (string->url "http://example.org/schema/nspace#name"))
+  (url->namespace+name (string->url "http://example.org/schema/nspace#"))
+  (url->namespace+name (string->url "http://example.org/schema/nspace/name"))
+  (url->namespace+name (string->url "http://example.org/schema/nspace/name/"))
+  (url->namespace+name (string->url "http://example.org/"))
+  (url->namespace+name (string->url "http://example.org"))
+]
+}
+         
 @defproc[(name->url
           [name ncname?])
          url-absolute?]{
@@ -211,7 +346,8 @@ Returns a new @tt{QName} from the name's namespace @italic{prefix} and the @ital
 @section[#:style '(toc)]{Module nsmap}
 @defmodule[rdf/core/nsmap]
 
-Package Description Here
+Namespace maps are used to create qualified names in serialization formats such as Turtle, or SPARQL. 
+A namespace map allows bi-directional lookups between the namespace URI and prefix.
 
 @local-table-of-contents[]
 
@@ -362,37 +498,6 @@ TBD
           [try-order? any/c #f])
          (listof (cons/c ncname? url-absolute?))]{
 TBD
-}
-
-@;{============================================================================}
-@;{============================================================================}
-@section[]{Module lang}
-@defmodule[rdf/core/lang]
-
-This module provides predicates that determines whether a given string is a valid @italic{Language Tag} as defined
-by RFC5646 and used across HTTP, HTML, XML, RDF, and much more.
-
-See BCP-47, RFC5646 @hyperlink["https://www.rfc-editor.org/info/rfc5646"]{Tags for Identifying Languages}. IANA Registries:
-@hyperlink["https://www.iana.org/assignments/language-tags/language-tags.xhtml#language-tags-1"]{Language Tags (Assigned)},
-@hyperlink["https://www.iana.org/assignments/language-subtag-registry/language-subtag-registry"]{Language Subtags},
-@hyperlink["https://www.iana.org/assignments/language-tag-extensions-registry/language-tag-extensions-registry"]{Language Tag
-Extensions (UCD)}.
-
-@defproc[#:kind "predicate"
-         (language-tag?
-          [val string?])
-         boolean?]{
-Determines if @racket[val] is a string conforming to the IETF BCP-47 rules for a language tag. These values are found
-in XML in the @tt{xml:lang} attribute but also in the RDF @tt{rdf:langString} type.
-
-@examples[
-  #:eval example-eval
-  (language-tag? "en")
-  (language-tag? "en-US")
-  (language-tag? "i-klingon")
-  (language-tag? "")  ;; can't be empty
-  (language-tag? "e") ;; need at least 2 characters
-]
 }
 
 @;{============================================================================}
@@ -825,7 +930,7 @@ for the default graph.
          (make-default-graph
           [statements statement-list?])
          graph?]{
-TBD
+Returns a new @racket[graph?] that has no name. In this case the value of @racket[graph-name] is @racket[#f].
 }
 
 @defproc[#:kind "constructor"
@@ -833,13 +938,13 @@ TBD
           [name graph-name?]
           [statements statement-list?])
          graph?]{
-TBD
+Returns a new @racket[graph?] that has an explicit @italic{name}.
 }
 
 @defproc[(graph-name-or-blank
           [graph graph?])
          subject?]{
-TBD
+Return the name of the @italic{graph}, if it was created as a default graph return a newly created blank node instead.
 }
 
 @;{============================================================================}
@@ -849,14 +954,14 @@ TBD
          (graph-named?
           [val graph?])
          boolean?]{
-TBD
+Return @racket[#t] if @italic{graph} was created as a named graph.
 }
 
 @defproc[#:kind "predicate"
          (graph-empty?
           [val graph?])
          boolean?]{
-TBD
+Return @racket[#t] if this graph contains no statements.
 }
 
 @defproc[#:kind "predicate"
@@ -867,67 +972,110 @@ TBD
 }
 
 @;{============================================================================}
+@subsection[]{Graph Indices}
+
+@defthing[graph-index-kind/c]{
+A contract defining the set of suport index types.
+}
+
+@defproc[#:kind "predicate"
+         (graph-has-index?
+          [graph graph?]
+          [index-kind graph-index-kind/c])
+         boolean?]{
+Return @racket[#t] if @italic{graph} supports an index of kind @italic{index-kind}.
+}
+
+@defproc[(graph-indexes
+          [graph graph?])
+         (listof graph-index-kind/c)]{
+Return a list of the index kinds supported by the @italic{graph}.
+}
+
+@defproc[(graph-index
+          [graph graph?]
+          [index-kind graph-index-kind/c])
+         (or/c (hash/c any/c (listof statement?)) #f)]{
+Return the index maintained by @italic{graph}, of kind @italic{index-kind} if it is supported, else @racket[#f].
+}
+
+@defproc[(graph-index-create
+          [graph graph?]
+          [index-kind graph-index-kind/c])
+         void?]{
+Create a new index in @italic{graph}, of kind @italic{index-kind}, if one does not already exist.
+}
+
+@defproc[(graph-index-drop
+          [graph graph?]
+          [index-kind graph-index-kind/c])
+         void?]{
+Remove an index in @italic{graph}, of kind @italic{index-kind}, if it exist.
+}
+
+
+@;{============================================================================}
 @subsection[]{Graph Counters}
 
 @defproc[(graph-count
-          [val graph?])
+          [graph graph?])
          exact-positive-integer?]{
-TBD
+Returns the number of statements in the graph.
 }
 
 @defproc[(graph-order
-          [val graph?])
+          [graph graph?])
          exact-positive-integer?]{
-TBD
+Returns the @italic{order} of the graph, or the number of vertices.
 }
 
 @;{============================================================================}
 @subsection[]{Statement Members}
 
 @defproc[(graph-member?
-          [val graph?]
+          [graph graph?]
           [statement statement?])
          boolean?]{
-TBD
+Return @racket[#t] if @italic{statement} exists in @italic{graph}.
 }
 
 @defproc[(graph-add
-          [val graph?]
+          [graph graph?]
           [statement statement?])
          graoh?]{
 TBD
 }
 
 @defproc[(graph-add-all
-          [val graph?]
+          [graph graph?]
           [statements statement-list?])
          graph?]{
 TBD
 }
 
 @defproc[(graph-remove
-          [val graph?]
+          [graph graph?]
           [statement statement?])
          graph?]{
 TBD
 }
 
 @defproc[(graph-remove-all
-          [val graph?]
+          [graph graph?]
           [statements statement-list?])
          graph?]{
 TBD
 }
 
 @defproc[(graph-remove-all*
-          [val graph?]
+          [graph graph?]
           [statements statement-list?])
          graph?]{
 TBD
 }
 
 @defproc[(graph-clear
-          [val graph?])
+          [graph graph?])
          graph?]{
 Returns a copy of this graph with all statements removed. This does not affect the graph's name if set.
 }
@@ -936,46 +1084,46 @@ Returns a copy of this graph with all statements removed. This does not affect t
 @subsection[]{Graph Filtering}
 
 @defproc[(graph-distinct-subjects
-          [val graph?])
+          [graph graph?])
          (set/c subject?)]{
 TBD
 }
 
 @defproc[(graph-distinct-predicates
-          [val graph?])
+          [graph graph?])
          (set/c predicate?)]{
 TBD
 }
 
 @defproc[(graph-distinct-objects
-          [val graph?])
+          [graph graph?])
          (set/c object?)]{
 TBD
 }
 
 @defproc[(graph-filter
           [proc (-> statement? boolean?)]
-          [val graph?])
+          [graph graph?])
          statement-list?]{
 TBD
 }
 
 @defproc[(graph-filter-by-subject
-          [val graph?]
+          [graph graph?]
           [obj subject?])
          statement-list?]{
 TBD
 }
 
 @defproc[(graph-filter-by-predicate
-          [val graph?]
+          [graph graph?]
           [obj predicate?])
          statement-list?]{
 TBD
 }
 
 @defproc[(graph-filter-by-object
-          [val graph?]
+          [graph graph?]
           [obj object?])
          statement-list?]{
 TBD
@@ -993,14 +1141,14 @@ constructed URIs follow the template below and this library uses UUIDs in string
 }
 
 @defproc[(graph-skolemize
-          [val graph?]
+          [graph graph?]
           [domain-name string? "example.com"])
          graph?]{
 Returns a new graph with all blank nodes in the original having been replaced with skolem URIs.
 }
 
 @defproc[(graph-skolemize!
-          [val graph?]
+          [graph graph?]
           [domain-name string? "example.com"])
          graph?]{
 TBD
@@ -1678,6 +1826,10 @@ Consider the following as a template.
 
 @defthing[rdf: namespace?]{The @racket[namespace] structure for this vocabulary.}
 
+@subsubsection[#:style '(non-toc)]{RDF Datatypes}
+
+@defthing[lang-String name?]{The @racket[name] structure corresponding to the property @tt{rdf:langString}.}
+
 @subsubsection[#:style '(non-toc)]{RDF Classes}
 
 @defthing[Alt name?]{The @racket[name] structure corresponding to the class @tt{rdf:Alt}.}
@@ -1692,7 +1844,6 @@ Consider the following as a template.
 @subsubsection[#:style '(non-toc)]{RDF Properties}
 
 @defthing[first name?]{The @racket[name] structure corresponding to the property @tt{rdf:first}.}
-@defthing[lang-String name?]{The @racket[name] structure corresponding to the property @tt{rdf:langString}.}
 @defthing[nil name?]{The @racket[name] structure corresponding to the property @tt{rdf:nil}.}
 @defthing[object name?]{The @racket[name] structure corresponding to the property @tt{rdf:object}.}
 @defthing[predicate name?]{The @racket[name] structure corresponding to the property @tt{rdf:predicate}.}
@@ -1875,6 +2026,89 @@ Consider the following as a template.
 @defthing[sd:name name?]{The @racket[name] structure corresponding to the property @tt{sd:name}.}
 @defthing[sd:namedGraph name?]{@racket[name] name structure corresponding to the property @tt{sd:namedGraph}.}
 
+
+@;{============================================================================}
+@;{============================================================================}
+
+@(bibliography
+
+  (bib-entry #:key "XML11"
+             #:title "Extensible Markup Language (XML) 1.1 (Second Edition)"
+             #:author "T. Bray, J. Paoli, C.M. Sperberg-McQueen, F Yergeau, and J. Cowan"
+             #:location "W3C"
+             #:url "https://www.w3.org/TR/xml11/"
+             #:date "29 September 2006")
+
+  (bib-entry #:key "XMLBASE"
+             #:title "XML Base (Second Edition)"
+             #:author "J Marsh, and R. Tobin"
+             #:location "W3C"
+             #:url "https://www.w3.org/TR/xmlbase/"
+             #:date "28 January 2009")
+
+  (bib-entry #:key "RDF11CAS"
+             #:title "RDF 1.1 Concepts and Abstract Syntax"
+             #:author "G. Klyne, J. J. Carroll, and B. McBride"
+             #:location "W3C"
+             #:url "https://www.w3.org/TR/rdf11-concepts/"
+             #:date "25 February 2014")
+
+  (bib-entry #:key "RDF11MT"
+             #:title "RDF 1.1 Semantics"
+             #:author "P. J. Hayes, and P. F. Patel-Schneider"
+             #:location "W3C"
+             #:url "https://www.w3.org/TR/rdf11-mt/"
+             #:date "25 February 2014")
+
+  (bib-entry #:key "RDF11NQ"
+             #:title "RDF 1.1 N-Quads -- A line-based syntax for RDF datasets"
+             #:author "G. Carothers"
+             #:location "W3C"
+             #:url "https://www.w3.org/TR/n-quads/"
+             #:date "25 February 2014")
+
+  (bib-entry #:key "RDF11NT"
+             #:title "RDF 1.1 N-Triples -- A line-based syntax for an RDF graph"
+             #:author "P. J. Hayes, and P. F. Patel-Schneider"
+             #:location "W3C"
+             #:url "https://www.w3.org/TR/n-triples/"
+             #:date "25 February 2014")
+
+  (bib-entry #:key "RDF11SCHEMA"
+             #:title "RDF Schema 1.1"
+             #:author "D. Brickley, and . V. Guha"
+             #:location "W3C"
+             #:url "https://www.w3.org/TR/rdf11-schema/"
+             #:date "25 February 2014")
+
+  (bib-entry #:key "RDF11TTL"
+             #:title "RDF 1.1 Turtle -- Terse RDF Triple Language"
+             #:author "D. Beckett, T. Berners-Lee, E. Prud'hommeaux, and . Carothers"
+             #:location "W3C"
+             #:url "https://www.w3.org/TR/turtle/"
+             #:date "25 February 2014")
+
+  (bib-entry #:key "RDF11XML"
+             #:title "RDF 1.1 Syntax"
+             #:author "F. Gandon, and G. Schreiber"
+             #:location "W3C"
+             #:url "https://www.w3.org/TR/rdf-syntax-grammar/"
+             #:date "25 February 2014")
+
+  (bib-entry #:key "RFC3986"
+             #:title "Uniform Resource Identifier (URI): Generic Syntax"
+             #:author "T. Berners-Lee, R. Fielding, and L. Masinter"
+             #:location "RFC"
+             #:url "http://www.ietf.org/rfc/rfc3986.txt"
+             #:date "January 2005")
+
+  (bib-entry #:key "RFC3987"
+             #:title "Internationalized Resource Identifiers (IRIs)"
+             #:author "M. Duerst, and M. Suignard"
+             #:location "RFC"
+             #:url "http://www.ietf.org/rfc/rfc3987.txt"
+             #:date "January 2005")
+)
 
 @;{============================================================================}
 @;{============================================================================}

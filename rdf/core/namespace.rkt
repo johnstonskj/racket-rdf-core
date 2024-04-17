@@ -1,6 +1,7 @@
 #lang racket/base
 
-(require racket/contract
+(require racket/bool
+         racket/contract
          racket/list
          racket/string
          ;; --------------------------------------
@@ -13,6 +14,8 @@
          symbol->ncname
          ;; --------------------------------------
          url-absolute?
+         url-namespace-safe?
+         ensure-namespace-url-safety
          ;; --------------------------------------
          (except-out (struct-out namespace)
                      internal-make-namespace)
@@ -23,6 +26,7 @@
          ;; --------------------------------------
          (struct-out name)
          make-name
+         url->namespace+name
          name->url
          name->qname)
 
@@ -92,6 +96,19 @@
 
 (define *qname-separator* ":")
 
+;; from https://www.w3.org/TR/2014/REC-turtle-20140225/Overview.html#sec-iri:
+;;
+;; NOTE
+;; Prefixed names are a superset of XML QNames. They differ in that the local part of prefixed names may include:
+;;
+;; leading digits, e.g. leg:3032571 or isbn13:9780136019701
+;; non leading colons, e.g. og:video:height
+;; reserved character escape sequences, e.g. wgs:lat\-long
+
+;; see https://www.w3.org/TR/2014/REC-turtle-20140225/Overview.html#sec-grammar-grammar
+;; see https://www.w3.org/TR/sparql11-query/#sparqlGrammar
+;; see https://www.w3.org/TR/2014/REC-rdf-syntax-grammar-20140225/Overview.html#section-Serialising
+
 ;; -------------------------------------------------------------------------------------------------
 ;; Additional URL predicate
 ;; -------------------------------------------------------------------------------------------------
@@ -111,6 +128,19 @@
        (or (empty? (url-path url))
            (url-path-absolute? url))))
 
+(define/contract (url-namespace-safe? url)
+  (-> any/c boolean?)
+  (and (url-absolute? url)
+       (or (let ((fragment (url-fragment url)))
+             (and (string? fragment) (= (string-length fragment) 0)))
+           (let ((path (url-path url)))
+             (and (list? path) (not (empty? path)) (string=? (path/param-path (last path)) ""))))))
+
+(define (boolean-guard v) (if (boolean? v) v (error)))
+
+(define ensure-namespace-url-safety
+  (make-parameter #t boolean-guard 'ensure-namespace-url-safety))
+
 ;; -------------------------------------------------------------------------------------------------
 ;; `namespace` struct type
 ;; -------------------------------------------------------------------------------------------------
@@ -122,15 +152,11 @@
   #:guard (struct-guard/c url-absolute? ncname?))
 
 (define/contract (make-namespace url prefix)
-  (-> (or/c url-absolute? string?) (or/c ncname? symbol? string?) namespace?)
-  (let* ((url-str (if (url? url) (url->string url) url))
-         (url (if (or (string-suffix? url-str "/") (string-suffix? url-str "#"))
-                   (if (url? url) url (string->url url-str))
-                   (string->url (append url-str "#"))))
-         (prefix (cond
-                   ((ncname? prefix) prefix)
-                   ((symbol? prefix) (symbol->string prefix))
-                   (else (string->ncname prefix)))))
+  (-> (or/c url-absolute? string?) ncname? namespace?)
+  (let* ((url (if (string? url) (string->url url) url)))
+    (when (and (ensure-namespace-url-safety)
+               (not (url-namespace-safe? url)))
+      (raise-argument-error 'make-namespace "url-namespace-safe?" (url->string url)))
     (internal-make-namespace url prefix)))
 
 (define/contract (namespace-make-url ns name)
@@ -178,6 +204,34 @@
   #:transparent
   #:constructor-name make-name
   #:guard (struct-guard/c namespace? ncname?))
+
+(define/contract (url->namespace+name url)
+  (-> url-absolute? (or/c (cons/c url-absolute? string?) #f))
+  (let* ((fragment (url-fragment url))
+         (path (map (λ (segment) (path/param-path segment))
+                    (url-path url)))
+         (last-segment (if (empty? path) #f (last path))))
+    (cond
+      ((non-empty-string? fragment) (cons (make-url (url-scheme url)
+                                                    (url-user url)
+                                                    (url-host url)
+                                                    (url-port url)
+                                                    (url-path-absolute? url)
+                                                    (url-path url)
+                                                    (url-query url)
+                                                    #f)
+                                          fragment))
+      ((and (non-empty-string? last-segment)
+            (false? fragment)) (cons (make-url (url-scheme url)
+                                               (url-user url)
+                                               (url-host url)
+                                               (url-port url)
+                                               (url-path-absolute? url)
+                                               (take (url-path url) (- (length path) 1))
+                                               (url-query url)
+                                               (url-fragment url))
+                                     last-segment))
+      (else #f))))
 
 (define/contract (name->url obj)
   (-> name? url?)

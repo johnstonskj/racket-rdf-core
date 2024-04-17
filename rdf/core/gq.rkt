@@ -54,6 +54,24 @@
   (-> ncname? pattern-component?)
   name)
 
+(define (char-range start end)
+  (map integer->char (range (char->integer start) (char->integer end))))
+
+(define (char-inclusive-range start end)
+  (map integer->char (inclusive-range (char->integer start) (char->integer end))))
+
+(define alnum-chars (list->vector 
+                      (append (char-inclusive-range #\a #\z)
+                              (char-inclusive-range #\A #\Z)
+                              (char-inclusive-range #\0 #\1)
+                              (list #\_))))
+(define alnum-char-count (vector-length alnum-chars))
+
+(define/contract (random-variable (length 4))
+  (-> (integer-in 1 #f)) 
+  (append (list (vector-ref alnum-chars (random 0 52)))
+          (map (lambda (_) (vector-ref alnum-chars (random 0 alnum-char-count))) (range length))))
+
 (define/contract (variable? val)
   (-> pattern-component? boolean?)
   (ncname? val))
@@ -76,6 +94,18 @@
 (define/contract (make-statement-pattern subject predicate object)
   (-> pattern-component? pattern-component? pattern-component? statement-pattern?)
   (list subject predicate object))
+
+;; -------------------------------------------------------------------------------------------------
+;; Graph Patterns
+;; -------------------------------------------------------------------------------------------------
+
+(define graph-pattern? (listof statement-pattern?))
+
+(define (make-common-subject-pattern predicate-object-patterns)
+  (-> (listof (list/c pattern-component? pattern-component?)) graph-pattern?)
+  (let ((subject (random-variable)))
+    (map (lambda (ptns) (make-statement-pattern subject (car ptns) (cadr ptns)))
+         predicate-object-patterns)))
 
 ;; -------------------------------------------------------------------------------------------------
 ;; Query and Results

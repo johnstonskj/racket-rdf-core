@@ -1,0 +1,7 @@
+ul.Compact, ol.Compact {
+    margin-bottom: 1em;
+}
+
+li.CompactItem > p:last-child {
+    margin-bottom: 0;
+}

@@ -22,7 +22,8 @@
          "./v/void.rkt")
 
 (provide (except-out (struct-out graph)
-                     internal-make-graph)
+                     internal-make-graph
+                     graph-indices)
          graph-name-or-blank
          make-default-graph
          make-named-graph
@@ -53,10 +54,27 @@
          graph-skolemize!
          skolem-url?
          ;; --------------------------------------
+         graph-index-kind/c
+         graph-has-index?
+         graph-indexes
+         graph-index
+         graph-index-create
+         graph-index-drop
+         ;; --------------------------------------
          describe-graph
          ;; --------------------------------------
          rdf-sub-graph
          rdf-graph)
+
+;; -------------------------------------------------------------------------------------------------
+;; `graph-index` types
+;; -------------------------------------------------------------------------------------------------
+
+(define graph-index/c (hash/c any/c (listof statement?)))
+
+(define graph-index-kind/c (one-of/c 'subject 'predicate 'object
+                                     'subject-predicate-object
+                                     'subject-predicate 'predicate-object))
 
 ;; -------------------------------------------------------------------------------------------------
 ;; `graph` types
@@ -64,23 +82,81 @@
 
 (define graph-name? (or/c #f subject?))
 
-(struct graph (name (statements #:mutable))
+(struct graph (name (statements #:mutable) indices)
   #:sealed
   #:transparent
   #:constructor-name internal-make-graph
-  #:guard (struct-guard/c graph-name? statement-list?))
+  #:guard (struct-guard/c graph-name? statement-list? (hash/c graph-index-kind/c graph-index/c)))
 
 (define (make-default-graph statements)
-  (internal-make-graph #f statements))
+  (internal-make-graph #f statements (make-hash)))
 
 (define (make-named-graph name statements)
   (when (url? name)
-   (internal-make-graph name statements)))
+   (internal-make-graph name statements (make-hash))))
 
 (define (graph-name-or-blank graph)
   (if (graph-named? graph)
       (graph-name graph)
       (make-blank-node)))
+
+;; -------------------------------------------------------------------------------------------------
+
+(define (statement-key stmt index-kind)
+  (cond
+    ((symbol=? index-kind 'subject) (get-subject stmt))
+    ((symbol=? index-kind 'predicate) (get-predicate stmt))
+    ((symbol=? index-kind 'object) (get-object stmt))
+    ((symbol=? index-kind 'subject-predicate-object) (list (get-subject stmt) (get-predicate stmt) (get-object stmt)))
+    ((symbol=? index-kind 'subject-predicate) (list (get-subject stmt) (get-predicate stmt)))
+    ((symbol=? index-kind 'predicate-object) (list (get-predicate stmt) (get-object stmt)))))
+
+(define (graph-index-add-one index kind statement)
+  (let* ((key (statement-key statement kind))
+         (key-list (hash-ref index key '())))
+    (hash-set! index key (cons key key-list))))
+
+(define (graph-index-remove-one index kind statement)
+  (let* ((key (statement-key statement kind))
+         (key-list (hash-ref index key '()))
+         (new-key-list (remove key key-list)))
+    (if (empty? new-key-list)
+        (hash-remove! index key)
+        (hash-set! index key new-key-list))))
+
+(define (make-graph-index graph index-kind)
+  (let ((index (make-hash)))
+    (map (lambda (stmt) (graph-index-add-one index index-kind stmt))
+         (graph-statements graph))
+    index))
+
+(define (graph-has-index? graph index-kind)
+  (hash-has-key? (graph-indices graph) index-kind))
+
+(define (graph-indexes graph)
+  (hash-keys (graph-indices graph)))
+
+(define (graph-index graph index-kind)
+  (hash-ref (graph-indices graph) index-kind #f))
+
+(define (graph-index-create graph index-kind)
+  (unless (graph-has-index? graph index-kind)
+    (hash-set! (graph-indices graph) (make-graph-index graph index-kind))))
+
+(define (graph-index-drop graph index-kind)
+  (when (graph-has-index? graph index-kind)
+    (hash-remove! (graph-indices graph) index-kind)))
+
+(define (graph-index-add graph statement)
+  (hash-for-each (lambda (kind index) (graph-index-add-one index kind statement))
+                 (graph-indices graph)))
+
+(define (graph-index-remove graph statement)
+  (hash-for-each (lambda (kind index) (graph-index-remove-one index kind statement))
+                 (graph-indices graph)))
+
+(define (graph-index-clear graph)
+  (for-each (lambda (index) (hash-clear! index)) (graph-indices graph)))
 
 ;; -------------------------------------------------------------------------------------------------
 
@@ -141,32 +217,41 @@
 
 ;; -------------------------------------------------------------------------------------------------
 
-(define (graph-distinct-subjects graph)
-  (list->set (map (λ (stmt) (get-subject stmt)) (graph-statements graph))))
+(define/contract (graph-distinct-subjects graph)
+  (-> graph? (set/c subject?))
+  (if (graph-has-index? graph 'subject)
+      (list->set (hash-keys (graph-index 'subject)))
+      (list->set (map (λ (stmt) (get-subject stmt)) (graph-statements graph)))))
 
-(define (graph-distinct-predicates graph)
-  (list->set (map (λ (stmt) (get-predicate stmt)) (graph-statements graph))))
+(define/contract (graph-distinct-predicates graph)
+  (-> graph? (set/c predicate?))
+  (if (graph-has-index? graph 'predicate)
+      (list->set (hash-keys (graph-index 'predicate)))
+  (list->set (map (λ (stmt) (get-predicate stmt)) (graph-statements graph)))))
 
-(define (graph-distinct-objects graph)
-  (list->set (map (λ (stmt) (get-object stmt)) (graph-statements graph))))
+(define/contract (graph-distinct-objects graph)
+  (-> graph? (set/c object?))
+  (if (graph-has-index? graph 'object)
+      (list->set (hash-keys (graph-index 'object)))
+  (list->set (map (λ (stmt) (get-object stmt)) (graph-statements graph)))))
 
 (define (graph-filter proc graph)
   (filter proc (graph-statements graph)))
 
 (define (graph-filter-by-subject graph obj)
-  (graph-filter
-   (λ (stmt) (equal? (get-subject stmt) obj))
-   graph))
+  (if (graph-has-index? graph 'subject)
+      (hash-ref (graph-index 'subject) obj)
+      (graph-filter (λ (stmt) (equal? (get-subject stmt) obj)) graph)))
 
 (define (graph-filter-by-predicate graph obj)
-  (graph-filter
-   (λ (stmt) (equal? (get-predicate stmt) obj))
-   graph))
+  (if (graph-has-index? graph 'predicate)
+      (hash-ref (graph-index 'predicate) obj)
+      (graph-filter (λ (stmt) (equal? (get-predicate stmt) obj)) graph)))
 
 (define (graph-filter-by-object graph obj)
-  (graph-filter
-   (λ (stmt) (equal? (get-object stmt) obj))
-   graph))
+  (if (graph-has-index? graph 'object)
+      (hash-ref (graph-index 'object) obj)
+      (graph-filter (λ (stmt) (equal? (get-object stmt) obj)) graph)))
 
 ;; -------------------------------------------------------------------------------------------------
 ;; Skolemization

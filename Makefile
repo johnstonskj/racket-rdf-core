@@ -34,6 +34,7 @@ $(BUILDOUTDIR):
 # Packaging targets
 # ==============================================================================
 setup:
+	cp $(SCRBLDIR)/compact.css $(COLLECTS)/doc/$(PACKAGENAME)/
 	raco setup \
 		--tidy --check-pkg-deps --unused-pkg-deps \
 		--only $(COLLECTS)

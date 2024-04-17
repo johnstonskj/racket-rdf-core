@@ -149,8 +149,6 @@
 
 (writer->to-string statement ntriple)
 
-;; TODO: rename these!
-
 (define/contract (write-nquad-statement graph-name stmt (out (current-output-port)))
   (->* (subject? statement?) (output-port?) void?)
   (write-ntriple-subject (get-subject stmt) out)
