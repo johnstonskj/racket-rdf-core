@@ -1798,6 +1798,9 @@ These modules have a common, simple, naming convention:
   @item{the members of the namespace are individual @racket[name] values with names as qnames.}
 ]
 
+See the @secref["Vocabulary_Tool" #:doc '(lib "rdf/core/scribblings/rdf-core.scrbl")], @tt{mkns}, that allows for
+creation of modules for other vocabularies.
+
 @local-table-of-contents[]
 
 @;{============================================================================}
