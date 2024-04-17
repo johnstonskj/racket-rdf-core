@@ -42,7 +42,7 @@
      words)
     ((and (= length 0) (non-empty-string? prefix))
      (display prefix op)
-     (--write-line-and-wrap (cdr words)
+     (--write-line-and-wrap words
                             (string-length prefix)
                             prefix
                             spacer
@@ -74,7 +74,7 @@
       (write-line-and-wrap words #:prefix ";; " #:output-port op))
     (displayln ";;" op))
   (when (vocabulary-specification-uri vocabulary)
-    (displayln (format ";; Specification URI: ~a"  (vocabulary-specification-uri vocabulary)) op)
+    (displayln (format ";; Specification URI: ~a"  (url->string (vocabulary-specification-uri vocabulary))) op)
     (displayln ";;" op))
   (when (vocabulary-specification-date vocabulary)
     (displayln (format ";; Specification Date: ~a"  (vocabulary-specification-date vocabulary)) op)
@@ -90,7 +90,7 @@
   (displayln "" op)
   (let ((prefix (namespace-prefix (vocabulary-namespace vocabulary)))
         (uri (namespace-url (vocabulary-namespace vocabulary)))
-        (separator (make-string (- 100 4) #\=)))
+        (separator (make-string (- (output-width) 4) #\=)))
     (displayln (format ";; ~a" separator) op)
     (displayln ";; Namespace definition" op)
     (displayln (format ";; ~a" separator) op)
@@ -103,6 +103,7 @@
     (displayln ";; Name Definitions" op)
     (displayln (format ";; ~a" separator) op)
     (when (not (empty? (vocabulary-names vocabulary)))
+      (displayln "" op)
       (for-each
        (λ (name) (displayln (format "(define ~a:~a (make-name ~a: \"~a\"))"
                                   prefix name
@@ -139,7 +140,7 @@
                       (("-w" "--width")
                        width
                        "The width of the output written (default: 100)"
-                       (output-width width))
+                       (output-width (string->number width)))
                       #:once-any
                       (("-o" "--output-file")
                        racket-file
@@ -167,7 +168,7 @@
      (make-vocabulary (make-namespace (car uri+prefix) (cadr uri+prefix))
                       (hash-ref args 'name)
                       (hash-ref args 'desc)
-                      (hash-ref args 'specuri)
+                      (string->url (hash-ref args 'specuri))
                       (hash-ref args 'specdate)
                       (flatten
                        (map (λ (member) (string-split member ","))

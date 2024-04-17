@@ -42,10 +42,10 @@
 @title[#:version  "0.1.0"]{RDF Core Data Model}
 @author[(author+email "Simon Johnston" "johnstonskj@gmail.com")]
 
-This is the core data model for RDF @cite["RDF11CAS"] in Racket, it also includes core vocabularies such as @tt{rdf}, @tt{rdfs}, @tt{xml},
-and @tt{xsd} as well as some basic IO functions. The goal of this package is to provide the model allowing the user to
-create statements, graphs and datasets in-memory. Additional Racket packages provide capabilities layered on top of this
-such as support for OWL and SPARQL and additional vocabularies.
+This is the core data model for RDF @cite["RDF11CAS"] in Racket, it also includes core vocabularies such as @tt{rdf},
+@tt{rdfs}, @tt{xml}, and @tt{xsd} as well as some basic IO functions. The goal of this package is to provide the model
+allowing the user to create statements, graphs and datasets in-memory. Additional Racket packages provide capabilities
+layered on top of this such as support for OWL and SPARQL and additional vocabularies.
 
 @table-of-contents[]
 
@@ -54,9 +54,9 @@ such as support for OWL and SPARQL and additional vocabularies.
 @section[#:style '(toc)]{Module namespace}
 @defmodule[rdf/core/namespace]
 
-This package actually models XML @cite["XML11"] namespaces, where a namespace is an absolute URI @cite["RFC3986"] (or IRI for RDF) and which may be
-associated with a prefix name. Members in the namespace have names which are concatenated onto the namespace URI, or
-may be referenced as qualified names (@italic{qnames}) in the form @tt{prefix:name}.
+This package actually models XML @cite["XML11"] namespaces, where a namespace is an absolute URI @cite["RFC3986"] (or
+IRI for RDF) and which may be associated with a prefix name. Members in the namespace have names which are concatenated
+onto the namespace URI, or may be referenced as qualified names (@italic{qnames}) in the form @tt{prefix:name}.
 
 
 @local-table-of-contents[]
@@ -64,8 +64,8 @@ may be referenced as qualified names (@italic{qnames}) in the form @tt{prefix:na
 @;{============================================================================}
 @subsection[]{Background and Definitions}
 
-The following example shows the use of the RDF, RDF Schema, and Friend-of-a-Friend namespaces to construct an RDF/XML @cite["RDF11XML"]
-document. 
+The following example shows the use of the RDF, RDF Schema, and Friend-of-a-Friend namespaces to construct an RDF/XML
+@cite["RDF11XML"] document.
 
 @nested[#:style 'code-inset]{
 @verbatim|{
@@ -1790,33 +1790,13 @@ From package @racket[rdf/core/dataset]:
 
 These modules have a common, simple, naming convention:
 
-@nested[#:style 'inset]{
-  @itemlist[
-    #:style 'ordered
-    @item{each module comprises one, and only one, namespace,}
-    @item{the module name is the same as the commonly-used prefix string,}
-    @item{the module contains a single @racket[namespace] value with the same prefix as name bit with the suffix ":",}
-    @item{the members of the namespace are individual @racket[name] values with names as qnames.}
-  ]
-}
-
-Consider the following as a template.
-
-@nested[#:style 'code-inset]{
-@verbatim|{
-#lang racket/base ;; file: {{ns-prefix.rkt}}
-
-(require rdf/core/namespace)
-
-(provide (all-defined-out))
-
-(define {{ns-prefix}}: (make-namespace {{ns-url}} {{ns-prefix}}))
-
-{% for name in ns-names %}
-(define {{ns-prefix}}:{{name}} (make-name {{ns-prefix}}: "{{name}}"))
-{% endfor %}
-}|
-}
+@itemlist[
+  #:style compact-list
+  @item{each module comprises one, and only one, namespace,}
+  @item{the module name is the same as the commonly-used prefix string,}
+  @item{the module contains a single @racket[namespace] value with the same prefix as name bit with the suffix ":",}
+  @item{the members of the namespace are individual @racket[name] values with names as qnames.}
+]
 
 @local-table-of-contents[]
 
@@ -2026,6 +2006,133 @@ Consider the following as a template.
 @defthing[sd:name name?]{The @racket[name] structure corresponding to the property @tt{sd:name}.}
 @defthing[sd:namedGraph name?]{@racket[name] name structure corresponding to the property @tt{sd:namedGraph}.}
 
+
+@;{============================================================================}
+@subsection[]{Vocabulary Tool}
+
+This package also includes a command-line tool @tt{mkns} that will generate a module in the same style as those above
+from a set of command-line parameters.
+
+@nested[#:style 'code-inset]{
+@verbatim|{
+❯ mkns -h
+usage: mkns [ <option> ... ] <uri> <prefix>
+  
+  Create a new Racket module for an RDF vocabulary.
+
+<option> is one of
+
+  -n <name>, --name <name>
+     This vocabulary's name
+  -d <text>, --description <text>
+     A description of this vocabulary
+  -s <uri>, --spec-uri <uri>
+     A Specification URI describing this vocabulary
+  -p <date>, --spec-published <date>
+     The publication date of the vocabulary specification
+  -w <width>, --width <width>
+     The width of the output written (default: 100)
+/ -o <racket-file>, --output-file <racket-file>
+|    The name of a file to write output to (default: stdout)
+| -r <module>, --output-racket-module <module>
+|    The name of a module to write output to
+| -u, --use-prefix-name
+\    Use the namespace prefix to determine the module name
+* -m <member-names>, --member <member-names>
+     The name of a member, or list of members, within this vocabulary
+  --help, -h
+     Show this help
+  --
+     Do not treat any remaining argument as a switch (at this level)
+
+ *   Asterisks indicate options allowed multiple times.
+ /|\ Brackets indicate mutually exclusive options.
+
+ Multiple single-letter switches can be combined after
+ one `-`. For example, `-h-` is the same as `-h --`.
+}|
+}
+
+The only required properties are the URI and prefix for the namespace, which generates a very @italic{bare-bones}
+module, as shown below.
+
+@nested[#:style 'code-inset]{
+@verbatim|{
+❯ mkns http://example.org/schema/example# ex
+#lang racket/base
+;;
+;; Status: not set
+;;
+
+(require (only-in rdf/core/namespace
+                  make-namespace
+                  make-name))
+
+(provide (all-defined-out))
+
+;; ==============================================================
+;; Namespace definition
+;; ==============================================================
+
+(define ex: 
+  (make-namespace "http://example.org/schema/example#"
+                  "ex"))
+
+;; ==============================================================
+;; Name Definitions
+;; ==============================================================
+}|
+}
+
+A more complete example specifies a name, description, a specification URI and date, as well as two member names to be
+added to the namespace. 
+
+@nested[#:style 'code-inset]{
+@verbatim|{
+❯ mkns -n "An example namespace" \
+       -d "Using the IETF example domain name, example.org, …" \
+       -s https://www.rfc-editor.org/rfc/rfc2606.html \
+       -p 1999-06 \
+       -m ExampleClass \
+       -m exampleProperty \
+       -w 65 \
+       http://example.org/schema/example# ex
+#lang racket/base
+;;
+;; Name: An example namespace
+;;
+;; Using the IETF example domain name, example.org, this adds a
+;; simple path which can be used to document RDF tools. 
+;;
+;; Specification URI: https://www.rfc-editor.org/rfc/rfc2606.html
+;;
+;; Specification Date: 1999-06
+;;
+;; Status: not set
+;;
+
+(require (only-in rdf/core/namespace
+                  make-namespace
+                  make-name))
+
+(provide (all-defined-out))
+
+;; ==============================================================
+;; Namespace definition
+;; ==============================================================
+
+(define ex: 
+  (make-namespace "http://example.org/schema/example#"
+                  "ex"))
+
+;; ==============================================================
+;; Name Definitions
+;; ==============================================================
+
+(define ex:exampleProperty (make-name ex: "exampleProperty"))
+(define ex:ExampleClass (make-name ex: "ExampleClass"))
+}|
+}
 
 @;{============================================================================}
 @;{============================================================================}
