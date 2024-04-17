@@ -1,0 +1,184 @@
+#!/usr/bin/env racket
+#lang racket/base
+
+(require racket/bool
+         racket/cmdline
+         racket/contract
+         racket/list
+         racket/string
+         net/url-string
+         rdf/core/namespace)
+
+(define iso-8601-date-pattern (pregexp "\\d{4}-[01]\\-[0-3]\\d"))
+(define iso-8601-partial-date-pattern (pregexp "(?:\\d{4}(-[01]\\d(-[0-3]\\d)?)?)"))
+
+(define (date-string? str)
+  (regexp-match? iso-8601-date-pattern str))
+
+(define (partial-date-string? str)
+  (regexp-match? iso-8601-partial-date-pattern str))
+
+(struct vocabulary (namespace
+                    name
+                    description
+                    specification-uri
+                    specification-date
+                    names)
+  #:transparent
+  #:constructor-name make-vocabulary
+  #:guard (struct-guard/c namespace?
+                          (or/c string? #f)
+                          (or/c string? #f)
+                          (or/c url-absolute? #f)
+                          (or/c partial-date-string? #f)
+                          (listof ncname?)))
+
+(define output-width (make-parameter 100))
+
+(define (--write-line-and-wrap words (length 0) (prefix "") (spacer " ") (op (current-output-port)))
+  (cond
+    ((empty? words)
+     (when (> length 0) (displayln "" op))
+     words)
+    ((and (= length 0) (non-empty-string? prefix))
+     (display prefix op)
+     (--write-line-and-wrap (cdr words)
+                            (string-length prefix)
+                            prefix
+                            spacer
+                            op))
+    (else (let ((next (car words)))
+            (if (>= (+ length (string-length next)) (output-width))
+                (begin
+                  (displayln "" op)
+                  (--write-line-and-wrap words 0 prefix spacer op))
+                (begin
+                  (display (format "~a~a" next spacer) op)
+                  (--write-line-and-wrap (cdr words)
+                                         (+ length (string-length next) 1)
+                                         prefix
+                                         spacer
+                                         op)))))))
+
+(define (write-line-and-wrap words #:prefix (prefix "") #:spacer (spacer " ") #:output-port (op (current-output-port)))
+  (--write-line-and-wrap words 0 prefix spacer op))
+
+(define (write-vocabulary vocabulary (op (current-output-port)))
+  (displayln "#lang racket/base" op)
+  (displayln ";;" op)
+  (when (vocabulary-name vocabulary)
+    (displayln (format ";; Name: ~a"  (vocabulary-name vocabulary)) op)
+    (displayln ";;" op))
+  (when (vocabulary-description vocabulary)
+    (let ((words (string-split (string-normalize-spaces (vocabulary-description vocabulary)))))
+      (write-line-and-wrap words #:prefix ";; " #:output-port op))
+    (displayln ";;" op))
+  (when (vocabulary-specification-uri vocabulary)
+    (displayln (format ";; Specification URI: ~a"  (vocabulary-specification-uri vocabulary)) op)
+    (displayln ";;" op))
+  (when (vocabulary-specification-date vocabulary)
+    (displayln (format ";; Specification Date: ~a"  (vocabulary-specification-date vocabulary)) op)
+    (displayln ";;" op))
+  (displayln ";; Status: not set" op)
+  (displayln ";;" op)
+  (displayln "" op)
+  (displayln "(require (only-in rdf/core/namespace" op)
+  (displayln "                  make-namespace" op)
+  (displayln "                  make-name))" op)
+  (displayln "" op)
+  (displayln "(provide (all-defined-out))" op)
+  (displayln "" op)
+  (let ((prefix (namespace-prefix (vocabulary-namespace vocabulary)))
+        (uri (namespace-url (vocabulary-namespace vocabulary)))
+        (separator (make-string (- 100 4) #\=)))
+    (displayln (format ";; ~a" separator) op)
+    (displayln ";; Namespace definition" op)
+    (displayln (format ";; ~a" separator) op)
+    (displayln "" op)
+    (displayln (format "(define ~a: " prefix) op)
+    (displayln (format "  (make-namespace \"~a\"" (url->string uri)) op)
+    (displayln (format "                  \"~a\"))" prefix) op)
+    (displayln "" op)
+    (displayln (format ";; ~a" separator) op)
+    (displayln ";; Name Definitions" op)
+    (displayln (format ";; ~a" separator) op)
+    (when (not (empty? (vocabulary-names vocabulary)))
+      (for-each
+       (λ (name) (displayln (format "(define ~a:~a (make-name ~a: \"~a\"))"
+                                  prefix name
+                                  prefix name) op))
+       (vocabulary-names vocabulary)))))
+
+(define (parse-command-line)
+  (let* ((args (make-hash `((name . #f)
+                            (desc . #f)
+                            (specuri . #f)
+                            (specdate . #f)
+                            (names . ())
+                            (out-file . #f))))
+         (uri+prefix (command-line
+                      #:usage-help ""
+                      #:usage-help "Create a new Racket module for an RDF vocabulary."
+                      #:once-each
+                      (("-n" "--name")
+                       name
+                       "This vocabulary's name"
+                       (hash-set! args 'name name))
+                      (("-d" "--description")
+                       text
+                       "A description of this vocabulary"
+                       (hash-set! args 'desc text))
+                      (("-s" "--spec-uri")
+                       uri
+                       "A Specification URI describing this vocabulary"
+                       (hash-set! args 'specuri uri))
+                      (("-p" "--spec-published")
+                       date
+                       "The publication date of the vocabulary specification"
+                       (hash-set! args 'specdate date))
+                      (("-w" "--width")
+                       width
+                       "The width of the output written (default: 100)"
+                       (output-width width))
+                      #:once-any
+                      (("-o" "--output-file")
+                       racket-file
+                       "The name of a file to write output to (default: stdout)"
+                       (hash-set! args 'out-file racket-file))
+                      (("-r" "--output-racket-module")
+                       module
+                       "The name of a module to write output to"
+                       (hash-set! args 'out-file (format "~a.rkt" module)))
+                      (("-u" "--use-prefix-name")
+                       "Use the namespace prefix to determine the module name"
+                       (hash-set! args 'out-file #t))
+                      #:multi
+                      (("-m" "--member")
+                       member-names
+                       "The name of a member, or list of members, within this vocabulary"
+                       (hash-set! args 'names (cons member-names (hash-ref args 'names))))
+                      #:args (uri prefix)
+                      (let ((file-arg (hash-ref args 'out-file)))
+                        (when (and (boolean? file-arg) (boolean=? file-arg #t))
+                          (hash-set! args 'out-file (format "~a.rkt" prefix))))
+                      (list uri prefix))))
+    ;;(displayln (format "~s" args))
+    (values
+     (make-vocabulary (make-namespace (car uri+prefix) (cadr uri+prefix))
+                      (hash-ref args 'name)
+                      (hash-ref args 'desc)
+                      (hash-ref args 'specuri)
+                      (hash-ref args 'specdate)
+                      (flatten
+                       (map (λ (member) (string-split member ","))
+                            (hash-ref args 'names))))
+     (hash-ref args 'out-file))))
+
+(let-values (((vocabulary output-file) (parse-command-line)))
+  (write-vocabulary vocabulary
+                    (if output-file
+                        (begin
+                          (displayln (format "Writing to file ~a" output-file))
+                          (open-output-file #:exists 'replace output-file))
+                        (current-output-port))))
+
