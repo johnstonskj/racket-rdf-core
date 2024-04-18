@@ -42,10 +42,10 @@
 @title[#:version  "0.1.0"]{RDF Core Data Model}
 @author[(author+email "Simon Johnston" "johnstonskj@gmail.com")]
 
-This is the core data model for RDF @cite["RDF11CAS"] in Racket, it also includes core vocabularies such as @tt{rdf},
-@tt{rdfs}, @tt{xml}, and @tt{xsd} as well as some basic IO functions. The goal of this package is to provide the model
+This is the core data model for @as-index{RDF} @cite["RDF11CAS"] in Racket, it also includes core vocabularies such as @tt{rdf},
+@index["RDF Schema"]{@tt{rdfs}}, @tt{xml}, and @tt{xsd} as well as some basic IO functions. The goal of this package is to provide the model
 allowing the user to create statements, graphs and datasets in-memory. Additional Racket packages provide capabilities
-layered on top of this such as support for OWL and SPARQL and additional vocabularies.
+layered on top of this such as support for @as-index{OWL} and @as-index{SPARQL} and additional vocabularies.
 
 @table-of-contents[]
 
@@ -54,8 +54,8 @@ layered on top of this such as support for OWL and SPARQL and additional vocabul
 @section[#:style '(toc)]{Module namespace}
 @defmodule[rdf/core/namespace]
 
-This package actually models XML @cite["XML11"] namespaces, where a namespace is an absolute URI @cite["RFC3986"] (or
-IRI for RDF) and which may be associated with a prefix name. Members in the namespace have names which are concatenated
+This package actually models @as-index{XML} @cite["XML11"] namespaces, where a namespace is an absolute @as-index{URI} @cite["RFC3986"], or
+@as-index{IRI} @cite["RFC3987"], and which may be associated with a prefix name. Members in the namespace have names which are concatenated
 onto the namespace URI, or may be referenced as qualified names (@italic{qnames}) in the form @tt{prefix:name}.
 
 
@@ -126,6 +126,267 @@ The same content in Turtle @cite["RDF11TTL"] syntax is:
   for this value is the XML Production @tt{QName} -- see @racket[qname?].}
 ]
 
+@subsubsection[]{Names -- from URIs}
+
+From @cite["RFC3986"], Appendix A -- Collected ABNF for URI:
+
+@nested[#:style 'code-inset]{
+@verbatim|{
+URI           = scheme ":" hier-part [ "?" query ] [ "#" fragment ]
+
+hier-part     = "//" authority path-abempty
+              / path-absolute
+              / path-rootless
+              / path-empty
+
+path-abempty  = *( "/" segment )
+path-absolute = "/" [ segment-nz *( "/" segment ) ]
+path-noscheme = segment-nz-nc *( "/" segment )
+path-rootless = segment-nz *( "/" segment )
+path-empty    = 0<pchar>
+
+segment       = *pchar
+segment-nz    = 1*pchar
+segment-nz-nc = 1*( unreserved / pct-encoded / sub-delims / "@" )
+              ; non-zero-length segment without any colon ":"
+
+pchar         = unreserved / pct-encoded / sub-delims / ":" / "@"
+
+fragment      = *( pchar / "/" / "?" )
+
+pct-encoded   = "%" HEXDIG HEXDIG
+
+unreserved    = ALPHA / DIGIT / "-" / "." / "_" / "~"
+reserved      = gen-delims / sub-delims
+gen-delims    = ":" / "/" / "?" / "#" / "[" / "]" / "@"
+sub-delims    = "!" / "$" / "&" / "'" / "(" / ")"
+              / "*" / "+" / "," / ";" / "="
+}|
+}
+
+From @cite["RFC3987"], Section 2.2 -- ABNF for IRI References and IRIs:
+
+@nested[#:style 'code-inset]{
+@verbatim|{
+IRI            = scheme ":" ihier-part [ "?" iquery ]
+                      [ "#" ifragment ]
+
+ihier-part     = "//" iauthority ipath-abempty
+               / ipath-absolute
+               / ipath-rootless
+               / ipath-empty
+ipath-abempty  = *( "/" isegment )
+ipath-absolute = "/" [ isegment-nz *( "/" isegment ) ]
+ipath-noscheme = isegment-nz-nc *( "/" isegment )
+ipath-rootless = isegment-nz *( "/" isegment )
+ipath-empty    = 0<ipchar>
+
+isegment       = *ipchar
+isegment-nz    = 1*ipchar
+isegment-nz-nc = 1*( iunreserved / pct-encoded / sub-delims
+                     / "@" )
+               ; non-zero-length segment without any colon ":"
+
+ipchar         = iunreserved / pct-encoded / sub-delims / ":"
+               / "@"
+
+ifragment      = *( ipchar / "/" / "?" )
+
+iunreserved    = ALPHA / DIGIT / "-" / "." / "_" / "~" / ucschar
+
+ucschar        = %xA0-D7FF / %xF900-FDCF / %xFDF0-FFEF
+               / %x10000-1FFFD / %x20000-2FFFD / %x30000-3FFFD
+               / %x40000-4FFFD / %x50000-5FFFD / %x60000-6FFFD
+               / %x70000-7FFFD / %x80000-8FFFD / %x90000-9FFFD
+               / %xA0000-AFFFD / %xB0000-BFFFD / %xC0000-CFFFD
+               / %xD0000-DFFFD / %xE1000-EFFFD
+
+iprivate       = %xE000-F8FF / %xF0000-FFFFD / %x100000-10FFFD
+}|
+}
+
+@subsubsection[]{Names -- from Turtle}
+
+From @cite["RDF11TTL"] Section 6.5 -- Grammar:
+
+@nested[#:style 'code-inset]{
+@verbatim|{
+[4]     prefixID       ::= '@prefix' PNAME_NS IRIREF '.'
+
+[6s]    sparqlPrefix   ::= "PREFIX" PNAME_NS IRIREF
+}|
+}
+
+Well-formedness rules:
+
+@itemlist[
+  #:style 'ordered
+
+  @item{
+    @tt{PNAME_NS} as @tt{prefix} When used in a @tt{prefixID} or @tt{sparqlPrefix} production, the prefix is the
+    potentially empty unicode string matching the first argument of the rule is a key into the namespaces map.}
+
+  @item{
+    @tt{PNAME_NS} as @tt{IRI} When used in a @tt{PrefixedName} production, the IRI is the value in the namespaces map
+    corresponding to the first argument of the rule.}
+    
+  @item{
+    @tt{PNAME_LN} as @tt{IRI}	A potentially empty prefix is identified by the first sequence, @tt{PNAME_NS}. The namespaces
+    map must have a corresponding namespace. The unicode string of the IRI is formed by unescaping the reserved
+    characters in the second argument, @tt{PN_LOCAL}, and concatenating this onto the namespace.}
+]
+
+@subsubsection[]{Names -- from SPARQL}
+
+From @cite["SPARQL"] Section 19.8 -- Grammar:
+
+@nested[#:style 'code-inset]{
+@verbatim|{
+[6]    PrefixDecl      ::= 'PREFIX' PNAME_NS IRIREF
+
+[136]  iri             ::= IRIREF | PrefixedName
+
+[140]  PNAME_NS        ::= PN_PREFIX? ':'
+[141]  PNAME_LN        ::= PNAME_NS PN_LOCAL
+
+[164]  PN_CHARS_BASE   ::= [A-Z] | [a-z] | [#x00C0-#x00D6]
+                         | [#x00D8-#x00F6] | [#x00F8-#x02FF]
+                         | [#x0370-#x037D] | [#x037F-#x1FFF]
+                         | [#x200C-#x200D] | [#x2070-#x218F]
+                         | [#x2C00-#x2FEF] | [#x3001-#xD7FF]
+                         | [#xF900-#xFDCF] | [#xFDF0-#xFFFD]
+                         | [#x10000-#xEFFFF]
+[165]  PN_CHARS_U      ::= PN_CHARS_BASE | '_'
+
+[167]  PN_CHARS        ::= PN_CHARS_U | '-' | [0-9] | #x00B7
+                         | [#x0300-#x036F] | [#x203F-#x2040]
+[168]  PN_PREFIX       ::= PN_CHARS_BASE
+                           ( ( PN_CHARS | '.' )* PN_CHARS )?
+[169]  PN_LOCAL        ::= ( PN_CHARS_U | ':' | [0-9] | PLX )
+                           ( ( PN_CHARS | '.' | ':' | PLX )*
+                             ( PN_CHARS | ':' | PLX ) )?
+[170]  PLX             ::= PERCENT | PN_LOCAL_ESC
+[171]  PERCENT         ::= '%' HEX HEX
+[172]  HEX             ::= [0-9] | [A-F] | [a-f]
+[173]  PN_LOCAL_ESC    ::= '\' ( '_' | '~' | '.' | '-' | '!' | '$'
+                               | '&' | "'" | '(' | ')' | '*' | '+'
+                               | ',' | ';' | '=' | '/' | '?' | '#'
+                               | '@' | '%' )
+}|
+}
+
+From section 19.5 (IRI References):
+
+@nested[#:style 'inset]{
+Text matched by the @tt{IRIREF} production and @tt{PrefixedName} (after prefix expansion) production, after escape
+processing, must conform to the generic syntax of IRI references in section 2.2 of RFC 3987 "ABNF for IRI References and
+IRIs". For example, the @tt{IRIREF} @tt{<abc#def>} may occur in a SPARQL query string, but the @tt{IRIREF}
+@tt{<abc##def>} must not.
+}
+
+@subsubsection[]{Names -- from XML}
+
+From @cite["XML11"]:
+
+@nested[#:style 'code-inset]{
+@verbatim|{
+[4]    NameStartChar   ::= ":" | [A-Z] | "_" | [a-z] | [#xC0-#xD6]
+                         | [#xD8-#xF6]
+                         | [#xF8-#x2FF] | [#x370-#x37D]
+                         | [#x37F-#x1FFF]| [#x200C-#x200D]
+                         | [#x2070-#x218F] | [#x2C00-#x2FEF]
+                         | [#x3001-#xD7FF] | [#xF900-#xFDCF]
+                         | [#xFDF0-#xFFFD] | [#x10000-#xEFFFF]
+[4a]   NameChar        ::= NameStartChar | "-" | "." | [0-9] | #xB7
+                         | [#x0300-#x036F] | [#x203F-#x2040]
+[5]    Name            ::= NameStartChar (NameChar)*
+}|
+}
+
+Note that tags (@tt{STag} and @tt{ETag}) as well as @tt{Attributes} use the @tt{Name} production above.
+
+From @cite["XMLNAMES"]:
+
+@nested[#:style 'code-inset]{
+@verbatim|{
+[4]    NCName          ::= Name - (Char* ':' Char*)
+                           /* An XML Name, minus the ":" */
+
+[7]    QName           ::= PrefixedName | UnprefixedName
+[8]    PrefixedName    ::= Prefix ':' LocalPart
+[9]    UnprefixedName  ::= LocalPart
+[10]   Prefix          ::= NCName
+[11]   LocalPart       ::= NCName
+}|
+}
+
+Note that tags (@tt{STag} and @tt{ETag}) as well as @tt{Attributes} now use the @tt{QName} production above.
+
+@cite["RDF11XML"], Section 8 -- Serializing an RDF Graph to RDF/XML, states:
+
+@nested[#:style 'inset]{
+There are some RDF Graphs as defined in @cite["RDF11CAS"] that cannot be serialized in RDF/XML.
+These are those that:
+
+@bold{Use property names that cannot be turned into XML namespace-qualified names.}
+@nested[#:style 'inset]{
+An XML namespace-qualified name (QName) has restrictions on the legal characters
+such that not all property URIs can be expressed as these names. It is recommended
+that implementors of RDF serializers, in order to break a URI into a namespace name
+and a local name, split it after the last XML non-NCName character, ensuring that
+the first character of the name is a Letter or '_'. If the URI ends in a non-NCName
+character then throw a "this graph cannot be serialized in RDF/XML" exception or error.
+}
+@bold{Use inappropriate reserved names as properties}
+@nested[#:style 'inset]{
+For example, a property with the same URI as any of the syntaxTerms production.
+}
+}
+
+@subsubsection[]{Names -- CURIEs}
+
+@cite["CURIE"] states @italic{This document defines a generic, abbreviated syntax for expressing URIs. This syntax is
+intended to be used as a common element by language designers. Target languages include, but are not limited to, XML
+languages. The intended audience for this document is Language designers, not the users of those Languages.}
+
+The relation between a CURIE (Compact URI) and the XML @tt{QName} is described as:
+
+@nested[#:style 'inset]{
+In many cases, language designers are attempting to use QNames for this extension mechanism. QNames
+do permit independent management of the name collection, and can map the names to a resource. Unfortunately, QNames are
+unsuitable in most cases because 1) the use of QName as identifiers in attribute values and element content is
+problematic as discussed in [QNAMES], and 2) the syntax of QNames is overly-restrictive and does not allow all possible
+URIs to be expressed.
+}
+
+Later, @italic{Syntactically, CURIEs are a superset of QNames.}.
+
+@nested[#:style 'code-inset]{
+@verbatim|{
+safe_curie     := '[' curie ']'
+               := #rx"(([\i-[:]][\c-[:]]*)?:)?.+"
+
+curie          := [ [ prefix ] ':' ] reference
+               := #rx"\[(([\i-[:]][\c-[:]]*)?:)?.+\]"
+
+prefix         := NCName            (as defined in XML11)
+
+reference      := irelative-ref     (as defined in RFC3987)
+}|
+}
+
+Which requires the following components from [RFC3987]:
+
+@nested[#:style 'code-inset]{
+@verbatim|{
+irelative-ref  = irelative-part [ "?" iquery ] [ "#" ifragment ]
+
+irelative-part = "//" iauthority ipath-abempty
+                    / ipath-absolute
+iauthority     = [ iuserinfo "@" ] ihost [ ":" port ]
+...
+}|
+}
 
 @;{============================================================================}
 @subsection[]{Identifier Names}
@@ -1389,6 +1650,23 @@ Package Description Here
 @;{============================================================================}
 @subsection[]{Pattern Component}
 
+
+From @cite["SPARQL"] Section 19.8 -- Grammar:
+
+@nested[#:style 'code-inset]{
+@verbatim|{
+[164]    PN_CHARS_BASE  ::= [A-Z] | [a-z] | [#x00C0-#x00D6] | [#x00D8-#x00F6]
+                          | [#x00F8-#x02FF] | [#x0370-#x037D] | [#x037F-#x1FFF]
+                          | [#x200C-#x200D] | [#x2070-#x218F] | [#x2C00-#x2FEF]
+                          | [#x3001-#xD7FF] | [#xF900-#xFDCF] | [#xFDF0-#xFFFD]
+                          | [#x10000-#xEFFFF]
+[165]    PN_CHARS_U     ::= PN_CHARS_BASE | '_'
+[166]    VARNAME        ::= ( PN_CHARS_U | [0-9] )
+                            ( PN_CHARS_U | [0-9] | #x00B7 | [#x0300-#x036F]
+                            | [#x203F-#x2040] )*
+}|
+}
+
 @defproc[#:kind "predicate"
          (pattern-component?
           [val any/c])
@@ -1695,6 +1973,7 @@ From package @racket[rdf/core/namespace]:
 
 @nested[#:style 'inset]{
   @itemlist[
+    #:style compact-list
     @item{@racket[ncname?]}
     @item{@racket[string->ncname]}
     @item{@racket[symbol->ncname]}
@@ -1709,6 +1988,7 @@ From package @racket[rdf/core/literal]:
 
 @nested[#:style 'inset]{
   @itemlist[
+    #:style compact-list
     @item{@racket[literal?]}
     @item{@racket[literal-lexical-form]}
     @item{@racket[literal-datatype-iri]}
@@ -1724,6 +2004,7 @@ From package @racket[rdf/core/statement]:
 
 @nested[#:style 'inset]{
   @itemlist[
+    #:style compact-list
     @item{@racket[make-blank-node]}
     @item{@racket[blank-node?]}
     @item{@racket[subject?]}
@@ -1740,6 +2021,7 @@ From package @racket[rdf/core/triple]:
 
 @nested[#:style 'inset]{
   @itemlist[
+    #:style compact-list
     @item{@racket[make-triple]}
     @item{@racket[triple?]}
     @item{@racket[subject?]}
@@ -1752,6 +2034,7 @@ From package @racket[rdf/core/graph]:
 
 @nested[#:style 'inset]{
   @itemlist[
+    #:style compact-list
     @item{@racket[make-default-graph]}
     @item{@racket[make-named-graph]}
     @item{@racket[graph?]}
@@ -1771,6 +2054,7 @@ From package @racket[rdf/core/dataset]:
 
 @nested[#:style 'inset]{
   @itemlist[
+    #:style compact-list
     @item{@racket[make-dataset]}
     @item{@racket[dataset?]}
     @item{@racket[dataset-empty?]}
@@ -2142,19 +2426,12 @@ added to the namespace.
 
 @(bibliography
 
-  (bib-entry #:key "XML11"
-             #:title "Extensible Markup Language (XML) 1.1 (Second Edition)"
-             #:author "T. Bray, J. Paoli, C.M. Sperberg-McQueen, F Yergeau, and J. Cowan"
+  (bib-entry #:key "CURIE"
+             #:title "CURIE Syntax 1.0 -- A syntax for expressing Compact URIs"
+             #:author "M. Birbeck, and S. McCarron"
              #:location "W3C"
-             #:url "https://www.w3.org/TR/xml11/"
-             #:date "29 September 2006")
-
-  (bib-entry #:key "XMLBASE"
-             #:title "XML Base (Second Edition)"
-             #:author "J Marsh, and R. Tobin"
-             #:location "W3C"
-             #:url "https://www.w3.org/TR/xmlbase/"
-             #:date "28 January 2009")
+             #:url "https://www.w3.org/TR/curie/"
+             #:date "16 December 2010")
 
   (bib-entry #:key "RDF11CAS"
              #:title "RDF 1.1 Concepts and Abstract Syntax"
@@ -2218,6 +2495,34 @@ added to the namespace.
              #:location "RFC"
              #:url "http://www.ietf.org/rfc/rfc3987.txt"
              #:date "January 2005")
+
+  (bib-entry #:key "SPARQL"
+             #:title "SPARQL 1.1 Query Language"
+             #:author "S. Harris, and A. Seaborne"
+             #:location "W3C"
+             #:url "https://www.w3.org/TR/sparql11-query/"
+             #:date "21 March 2013")
+
+  (bib-entry #:key "XML11"
+             #:title "Extensible Markup Language (XML) 1.1 (Second Edition)"
+             #:author "T. Bray, J. Paoli, C.M. Sperberg-McQueen, F Yergeau, and J. Cowan"
+             #:location "W3C"
+             #:url "https://www.w3.org/TR/xml11/"
+             #:date "29 September 2006")
+
+  (bib-entry #:key "XMLBASE"
+             #:title "XML Base (Second Edition)"
+             #:author "J Marsh, and R. Tobin"
+             #:location "W3C"
+             #:url "https://www.w3.org/TR/xmlbase/"
+             #:date "28 January 2009")
+
+  (bib-entry #:key "XMLNAMES"
+             #:title "Namespaces in XML 1.0 (Third Edition)"
+             #:author "T. Bray, D. Hollander, A. Layman, R. Tobin, and H. S. Thompson"
+             #:location "W3C"
+             #:url "https://www.w3.org/TR/xml-names/"
+             #:date "8 December 2009")
 )
 
 @;{============================================================================}
