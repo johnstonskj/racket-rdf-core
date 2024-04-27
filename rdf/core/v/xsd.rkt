@@ -29,7 +29,7 @@
 
 (define xsd: (string->namespace xsd-namespace-string))
 
-(define (nsmap-add-xsd map)
+(define (nsmap-add-xml-schema-datatypes map)
   (nsmap-set! map
               (string->prefix xsd-prefix-string)
               (string->namespace xsd-namespace-string)))

@@ -2312,39 +2312,59 @@ creation of modules for other vocabularies.
 @subsection[]{RDF}
 @defmodule[rdf/core/v/rdf]
 
+@defthing[rdf-prefix-string prefix-string? #:value "rdf"]{The preferred, or common, prefix for this namespace as a @racket[string?].}
+
+@defthing[rdf-namespace-string string?]{The IRI for this namespace as a @racket[string?].}
+
 @defthing[rdf: namespace?]{The @racket[namespace] structure for this vocabulary.}
+
+@defproc[(nsmap-add-rdf
+          [map nsmap?])
+         void?]{
+Add this namespace, and preferred prefix, to the namespace map @racket[map].
+}
 
 @subsubsection[#:style '(non-toc)]{RDF Datatypes}
 
-@defthing[lang-String nsname?]{The @racket[nsname?] structure corresponding to the property @tt{rdf:langString}.}
+@defthing[rdf:lang-String nsname?]{The @racket[nsname?] structure corresponding to the property @tt{rdf:langString}.}
 
 @subsubsection[#:style '(non-toc)]{RDF Classes}
 
-@defthing[Alt nsname?]{The @racket[nsname?] structure corresponding to the class @tt{rdf:Alt}.}
-@defthing[Bag nsname?]{The @racket[nsname?] structure corresponding to the class @tt{rdf:Bag}.}
-@defthing[HTML nsname?]{The @racket[nsname?] structure corresponding to the class @tt{rdf:HTML}.}
-@defthing[List nsname?]{The @racket[nsname?] structure corresponding to the class @tt{rdf:List}.}
-@defthing[Property nsname?]{The @racket[nsname?] structure corresponding to the class @tt{rdf:Property}.}
-@defthing[Seq nsname?]{The @racket[nsname?] structure corresponding to the class @tt{rdf:Seq}.}
-@defthing[Statement nsname?]{The @racket[nsname?] structure corresponding to the class @tt{rdf:Statement}.}
-@defthing[XMLLiteral nsname?]{The @racket[nsname?] structure corresponding to the class @tt{rdf:XMLLiteral}.}
+@defthing[rdf:Alt nsname?]{The @racket[nsname?] structure corresponding to the class @tt{rdf:Alt}.}
+@defthing[rdf:Bag nsname?]{The @racket[nsname?] structure corresponding to the class @tt{rdf:Bag}.}
+@defthing[rdf:HTML nsname?]{The @racket[nsname?] structure corresponding to the class @tt{rdf:HTML}.}
+@defthing[rdf:List nsname?]{The @racket[nsname?] structure corresponding to the class @tt{rdf:List}.}
+@defthing[rdf:Property nsname?]{The @racket[nsname?] structure corresponding to the class @tt{rdf:Property}.}
+@defthing[rdf:Seq nsname?]{The @racket[nsname?] structure corresponding to the class @tt{rdf:Seq}.}
+@defthing[rdf:Statement nsname?]{The @racket[nsname?] structure corresponding to the class @tt{rdf:Statement}.}
+@defthing[rdf:XMLLiteral nsname?]{The @racket[nsname?] structure corresponding to the class @tt{rdf:XMLLiteral}.}
 
 @subsubsection[#:style '(non-toc)]{RDF Properties}
 
-@defthing[first nsname?]{The @racket[nsname?] structure corresponding to the property @tt{rdf:first}.}
-@defthing[nil nsname?]{The @racket[nsname?] structure corresponding to the property @tt{rdf:nil}.}
-@defthing[object nsname?]{The @racket[nsname?] structure corresponding to the property @tt{rdf:object}.}
-@defthing[predicate nsname?]{The @racket[nsname?] structure corresponding to the property @tt{rdf:predicate}.}
-@defthing[rest nsname?]{The @racket[nsname?] structure corresponding to the property @tt{rdf:rest}.}
-@defthing[subject nsname?]{The @racket[nsname?] structure corresponding to the property @tt{rdf:subject}.}
-@defthing[type nsname?]{The @racket[nsname?] structure corresponding to the property @tt{rdf:type}.}
-@defthing[value nsname?]{The @racket[nsname?] structure corresponding to the property @tt{rdf:value}.}
+@defthing[frdf:irst nsname?]{The @racket[nsname?] structure corresponding to the property @tt{rdf:first}.}
+@defthing[rdf:nil nsname?]{The @racket[nsname?] structure corresponding to the property @tt{rdf:nil}.}
+@defthing[rdf:object nsname?]{The @racket[nsname?] structure corresponding to the property @tt{rdf:object}.}
+@defthing[rdf:predicate nsname?]{The @racket[nsname?] structure corresponding to the property @tt{rdf:predicate}.}
+@defthing[rdf:rest nsname?]{The @racket[nsname?] structure corresponding to the property @tt{rdf:rest}.}
+@defthing[rdf:subject nsname?]{The @racket[nsname?] structure corresponding to the property @tt{rdf:subject}.}
+@defthing[rdf:type nsname?]{The @racket[nsname?] structure corresponding to the property @tt{rdf:type}.}
+@defthing[rdf:value nsname?]{The @racket[nsname?] structure corresponding to the property @tt{rdf:value}.}
 
 @;{============================================================================}
 @subsection[]{RDF Schema}
 @defmodule[rdf/core/v/rdfs]
 
+@defthing[rdfs-prefix-string prefix-string? #:value "rdfs"]{The preferred, or common, prefix for this namespace as a @racket[string?].}
+
+@defthing[rdfs-namespace-string string?]{The IRI for this namespace as a @racket[string?].}
+
 @defthing[rdfs: namespace?]{The @racket[namespace] structure for this vocabulary.}
+
+@defproc[(nsmap-add-rdf-schema
+          [map nsmap?])
+         void?]{
+Add this namespace, and preferred prefix, to the namespace map @racket[map].
+}
 
 @subsubsection[#:style '(non-toc)]{RDFS Classes}
 
@@ -2371,7 +2391,17 @@ creation of modules for other vocabularies.
 @subsection[]{XML}
 @defmodule[rdf/core/v/xml]
 
+@defthing[xml-prefix-string prefix-string? #:value "xml"]{The preferred, or common, prefix for this namespace as a @racket[string?].}
+
+@defthing[xml-namespace-string string?]{The IRI for this namespace as a @racket[string?].}
+
 @defthing[xml: namespace?]{The @racket[namespace] structure for this vocabulary.}
+
+@defproc[(nsmap-add-xml
+          [map nsmap?])
+         void?]{
+Add this namespace, and preferred prefix, to the namespace map @racket[map].
+}
 
 @subsubsection[#:style '(non-toc)]{XML Properties}
 
@@ -2383,7 +2413,17 @@ creation of modules for other vocabularies.
 @subsection[]{XML Schema Datatypes}
 @defmodule[rdf/core/v/xsd]
 
+@defthing[xsd-prefix-string prefix-string? #:value "xsd"]{The preferred, or common, prefix for this namespace as a @racket[string?].}
+
+@defthing[xsd-namespace-string string?]{The IRI for this namespace as a @racket[string?].}
+
 @defthing[xsd: namespace?]{The namespace structure for the XML Schema (Part 2 -- Datatypes) vocabulary.}
+
+@defproc[(nsmap-add-xml-schema-datatypes
+          [map nsmap?])
+         void?]{
+Add this namespace, and preferred prefix, to the namespace map @racket[map].
+}
 
 @subsubsection[#:style '(non-toc)]{XSD Classes}
 
@@ -2453,7 +2493,17 @@ creation of modules for other vocabularies.
 @subsection[]{Vocabulary of Interlinked Datasets}
 @defmodule[rdf/core/v/void]
 
+@defthing[void-prefix-string prefix-string? #:value "void"]{The preferred, or common, prefix for this namespace as a @racket[string?].}
+
+@defthing[void-namespace-string string?]{The IRI for this namespace as a @racket[string?].}
+
 @defthing[void: namespace?]{The @racket[namespace] structure for this vocabulary.}
+
+@defproc[(nsmap-add-void
+          [map nsmap?])
+         void?]{
+Add this namespace, and preferred prefix, to the namespace map @racket[map].
+}
 
 @subsubsection[#:style '(non-toc)]{VOID Classes}
 
@@ -2497,7 +2547,17 @@ creation of modules for other vocabularies.
 @subsection[]{SPARQL Service Description}
 @defmodule[rdf/core/v/sd]
 
+@defthing[sd-prefix-string prefix-string? #:value "sd"]{The preferred, or common, prefix for this namespace as a @racket[string?].}
+
+@defthing[sd-namespace-string string?]{The IRI for this namespace as a @racket[string?].}
+
 @defthing[sd: namespace?]{The @racket[namespace] structure for this vocabulary.}
+
+@defproc[(nsmap-add-sd
+          [map nsmap?])
+         void?]{
+Add this namespace, and preferred prefix, to the namespace map @racket[map].
+}
 
 @subsubsection[#:style '(non-toc)]{SD Classes}
 
@@ -2525,7 +2585,7 @@ from a set of command-line parameters.
 @verbatim|{
 ❯ mkns -h
 usage: mkns [ <option> ... ] <uri> <prefix>
-  
+
   Create a new Racket module for an RDF vocabulary.
 
 <option> is one of
