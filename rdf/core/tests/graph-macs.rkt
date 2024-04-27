@@ -2,8 +2,6 @@
 
 (require rackunit
          ;; --------------------------------------
-         "../literal.rkt"
-         "../statement.rkt"
          "../graph.rkt"
          "../io.rkt")
 
@@ -18,7 +16,7 @@
        "Single statement"
      (display
       (graph->ntriple-string
-       (make-default-graph
+       (unnamed-graph
         (rdf-sub-graph "http://example.com/p/me"
                        "http://example.com/v/people#hasName" "Me!")))))
 
@@ -26,7 +24,7 @@
        "Single statement, using parens"
      (display
       (graph->ntriple-string
-       (make-default-graph
+       (unnamed-graph
         (rdf-sub-graph "http://example.com/p/me"
                        ("http://example.com/v/people#hasName" ("Me!")))))))
 
@@ -34,7 +32,7 @@
        "Multiple predicates with single objects"
      (display
       (graph->ntriple-string
-       (make-default-graph
+       (unnamed-graph
         (rdf-sub-graph "http://example.com/p/me"
                        ("http://example.com/v/people#hasFirstName" "Me")
                        ("http://example.com/v/people#hasLastName" "!"))))))
@@ -43,7 +41,7 @@
        "Tests for multiple predicates with single objects, using parens"
      (display
       (graph->ntriple-string
-       (make-default-graph
+       (unnamed-graph
         (rdf-sub-graph "http://example.com/p/me"
                        ("http://example.com/v/people#hasFirstName" ("Me"))
                        ("http://example.com/v/people#hasLastName" ("!")))))))
@@ -52,7 +50,7 @@
        "Multiple predicates each with multiple objects"
      (display
       (graph->ntriple-string
-       (make-default-graph
+       (unnamed-graph
         (rdf-sub-graph "http://example.com/p/me"
                        ("http://example.com/v/people#hasName" ("Me" "!"))
                        ("http://example.com/v/people#hasScores" (2 4 6)))))))
@@ -63,7 +61,7 @@
        "Anonymous subject and single statement"
      (display
       (graph->ntriple-string
-       (make-default-graph
+       (unnamed-graph
         (rdf-sub-graph "http://example.com/v/people#hasName" "Me!")))))
 
    (test-case
@@ -76,7 +74,7 @@
        "Anonymous subject and multiple predicates with single objects"
      (display
       (graph->nquad-string
-       (make-default-graph
+       (unnamed-graph
         (rdf-sub-graph ("http://example.com/v/people#hasFirstName" "Me")
                        ("http://example.com/v/people#hasLastName" "!"))))))
 
@@ -84,7 +82,7 @@
        "Anonymous subject and multiple predicates with single objects, using parens"
      (display
       (graph->nquad-string
-       (make-default-graph
+       (unnamed-graph
         (rdf-sub-graph ("http://example.com/v/people#hasFirstName" ("Me"))
                        ("http://example.com/v/people#hasLastName" ("!")))))))
 
@@ -92,7 +90,7 @@
        "Anonymous subject and multiple predicates each with multiple objects"
      (display
       (graph->nquad-string
-       (make-default-graph
+       (unnamed-graph
         (rdf-sub-graph ("http://example.com/v/people#hasName" ("Me" "!"))
                        ("http://example.com/v/people#hasScores" (2 4 6)))))))
 

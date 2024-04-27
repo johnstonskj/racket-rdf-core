@@ -7,7 +7,9 @@
          racket/list
          racket/string
          net/url-string
-         rdf/core/namespace)
+         rdf/core/name
+         rdf/core/namespace
+         rdf/core/nsmap)
 
 (define iso-8601-date-pattern (pregexp "\\d{4}-[01]\\-[0-3]\\d"))
 (define iso-8601-partial-date-pattern (pregexp "(?:\\d{4}(-[01]\\d(-[0-3]\\d)?)?)"))
@@ -19,6 +21,7 @@
   (regexp-match? iso-8601-partial-date-pattern str))
 
 (struct vocabulary (namespace
+                    namespace-prefix
                     name
                     description
                     specification-uri
@@ -27,11 +30,12 @@
   #:transparent
   #:constructor-name make-vocabulary
   #:guard (struct-guard/c namespace?
+                          prefix-string?
                           (or/c string? #f)
                           (or/c string? #f)
                           (or/c url-absolute? #f)
                           (or/c partial-date-string? #f)
-                          (listof ncname?)))
+                          (listof local-name-string?)))
 
 (define output-width (make-parameter 100))
 
@@ -73,31 +77,44 @@
     (let ((words (string-split (string-normalize-spaces (vocabulary-description vocabulary)))))
       (write-line-and-wrap words #:prefix ";; " #:output-port op))
     (displayln ";;" op))
-  (when (vocabulary-specification-uri vocabulary)
-    (displayln (format ";; Specification URI: ~a"  (url->string (vocabulary-specification-uri vocabulary))) op)
-    (displayln ";;" op))
-  (when (vocabulary-specification-date vocabulary)
-    (displayln (format ";; Specification Date: ~a"  (vocabulary-specification-date vocabulary)) op)
+  (when (or  (vocabulary-specification-uri vocabulary)
+             (vocabulary-specification-date vocabulary))
+    (when (vocabulary-specification-uri vocabulary)
+      (displayln (format ";; Specification URI:  ~a"  (url->string (vocabulary-specification-uri vocabulary))) op))
+    (when (vocabulary-specification-date vocabulary)
+      (displayln (format ";; Specification Date: ~a"  (vocabulary-specification-date vocabulary)) op))
     (displayln ";;" op))
   (displayln ";; Status: not set" op)
   (displayln ";;" op)
   (displayln "" op)
+  (displayln "(require (only-in rdf/core/name" op)
+  (displayln "                  string->local-name)" op)
   (displayln "(require (only-in rdf/core/namespace" op)
-  (displayln "                  make-namespace" op)
-  (displayln "                  make-name))" op)
+  (displayln "                  string->namespace" op)
+  (displayln "                  namespace+name->nsname)" op)
+  (displayln "         (only-in rdf/core/nsmap" op)
+  (displayln "                  string->prefix-name" op)
+  (displayln "                  nsmap-set!))" op)
   (displayln "" op)
   (displayln "(provide (all-defined-out))" op)
   (displayln "" op)
-  (let ((prefix (namespace-prefix (vocabulary-namespace vocabulary)))
-        (uri (namespace-url (vocabulary-namespace vocabulary)))
+  (let ((prefix (vocabulary-namespace-prefix vocabulary))
+        (uri (vocabulary-namespace vocabulary))
         (separator (make-string (- (output-width) 4) #\=)))
     (displayln (format ";; ~a" separator) op)
     (displayln ";; Namespace definition" op)
     (displayln (format ";; ~a" separator) op)
     (displayln "" op)
+    (displayln (format "(define ~a-prefix-string \"~a\")" prefix prefix) op)
+    (displayln (format "(define ~a-namespace-string \"~a\")" prefix (namespace->string uri)) op)
+    (displayln "" op)
     (displayln (format "(define ~a: " prefix) op)
-    (displayln (format "  (make-namespace \"~a\"" (url->string uri)) op)
-    (displayln (format "                  \"~a\"))" prefix) op)
+    (displayln (format "  (string->namespace \"~a\"))" (namespace->string uri)) op)
+    (displayln "" op)
+    (displayln (format "(define (nsmap-add-~a map)" prefix) op)
+    (displayln (format "  (nsmap-set! map") op)
+    (displayln (format "              (string->prefix-name= ~a-prefix-string)" prefix) op)
+    (displayln (format "              (string->namespace \"~a\")))" (namespace->string uri)) op)
     (displayln "" op)
     (displayln (format ";; ~a" separator) op)
     (displayln ";; Name Definitions" op)
@@ -105,9 +122,11 @@
     (when (not (empty? (vocabulary-names vocabulary)))
       (displayln "" op)
       (for-each
-       (λ (name) (displayln (format "(define ~a:~a (make-name ~a: \"~a\"))"
-                                  prefix name
-                                  prefix name) op))
+       (λ (name)
+         (displayln (format "(define ~a:~a"
+                            prefix name) op)
+         (displayln (format "  (namespace+name->nsname ~a: (string->local-name \"~a\")))"
+                            prefix name) op))
        (vocabulary-names vocabulary)))))
 
 (define (parse-command-line)
@@ -163,12 +182,15 @@
                         (when (and (boolean? file-arg) (boolean=? file-arg #t))
                           (hash-set! args 'out-file (format "~a.rkt" prefix))))
                       (list uri prefix))))
-    ;;(displayln (format "~s" args))
+    (displayln (format "~s // ~a" args uri+prefix))
     (values
-     (make-vocabulary (make-namespace (car uri+prefix) (cadr uri+prefix))
+     (make-vocabulary (string->namespace (car uri+prefix))
+                      (cadr uri+prefix)
                       (hash-ref args 'name)
                       (hash-ref args 'desc)
-                      (string->url (hash-ref args 'specuri))
+                      (if (hash-ref args 'specuri)
+                          (string->url (hash-ref args 'specuri))
+                          #f)
                       (hash-ref args 'specdate)
                       (flatten
                        (map (λ (member) (string-split member ","))

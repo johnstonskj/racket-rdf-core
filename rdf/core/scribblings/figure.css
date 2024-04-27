@@ -1,0 +1,27 @@
+body {
+    counter-reset: figures;
+}
+
+blockquote.Figure {
+    text-align: center;
+    counter-increment: figures;
+}
+
+blockquote.Figure > p:nth-of-type(1) {
+    margin-bottom: 0.5em;
+}
+
+blockquote.Figure > p:nth-of-type(1) > img {
+    height: auto;
+    width: auto;
+    max-width: 100%;
+}
+
+blockquote.Figure > p:nth-of-type(2) {
+    font-size: 0.8em;
+    font-style: italic;
+}
+
+blockquote.Figure > p:nth-of-type(2)::before {
+    content: "Figure " counter(figures) ": "
+}

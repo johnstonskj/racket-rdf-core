@@ -9,50 +9,59 @@
          "./statement.rkt"
          "./v/rdf.rkt")
 
-(provide (struct-out triple)
-         make-triple
-         make-reified-triples
-         statement->reified-triples
-         ;; --------------------------------------
-         make-statement-list
-         make-anon-statement-list
-         ;; --------------------------------------
-         statement-add-to-subject
-         statement-add-to-object
-         make-type-statement
-         statement-add-type-to-subject)
+(provide (contract-out
+          (triple? (-> any/c boolean?))
+          (triple (-> subject? predicate? object? triple?))
+          (list->triple (-> (list/c subject? predicate? object?) triple?))
+          (reify (-> subject? predicate? object? (listof triple?)))
+          (statement->reified-triples (-> statement? (listof triple?)))
+          ;; --------------------------------------
+          (statement-list
+           (-> (or/c subject? string?)
+               (listof (list/c (or/c predicate? string?)
+                               (or/c (or/c object? string? boolean? number?)
+                                     (listof (or/c object? string? boolean? number?)))))
+               (listof triple?)))
+          (anon-statement-list
+           (-> (listof (list/c (or/c predicate? string?)
+                               (or/c (or/c object? string? boolean? number?)
+                                     (listof (or/c object? string? boolean? number?)))))
+               (listof triple?)))
+          ;; --------------------------------------
+          (statement-add-to-subject(-> statement? predicate? object? triple?))
+          (statement-add-to-object (-> statement? predicate? object? triple?))
+          (type-statement (-> subject? resource? triple?))
+          (statement-add-type-to-subject (-> statement? resource? triple?))))
 
 ;; -------------------------------------------------------------------------------------------------
 ;; `triple` concrete type
 ;; -------------------------------------------------------------------------------------------------
 
 (struct triple (subject predicate object)
-  #:sealed
   #:transparent
-  #:constructor-name make-triple
   #:guard (struct-guard/c subject? predicate? object?)
   #:methods gen:statement
   ((define (get-subject triple) (triple-subject triple))
    (define (get-predicate triple) (triple-predicate triple))
    (define (get-object triple) (triple-object triple))))
 
-(define/contract (list->triple stmt)
-  (-> (list/c subject? predicate? object?) triple?)
-  (apply make-triple stmt))
+(define (type-statement subject type)
+  (triple subject rdf:type type))
 
-(define/contract (statement->reified-triples stmt)
-  (-> statement? (listof triple?))
+(define (list->triple stmt)
+  (apply triple stmt))
+
+(define (statement->reified-triples stmt)
   (map list->triple (statement->reified-list stmt)))
 
-(define/contract (make-reified-triples subject predicate object)
-  (-> subject? predicate? object? (listof triple?))
-  (statement->reified-list (make-triple subject predicate object)))
+(define (reify subject predicate object)
+  (statement->reified-list (triple subject predicate object)))
 
 ;; -------------------------------------------------------------------------------------------------
 ;; Statement Lists
 ;; -------------------------------------------------------------------------------------------------
 
-(define (make-statement-list subject predicate-object-list)
+(define (statement-list subject predicate-object-list)
   (let ((common-subject (if (string? subject) (string->url subject) subject)))
     (flatten
      (map
@@ -62,32 +71,25 @@
                                      (string->url this-predicate)
                                      this-predicate))
                (this-object-list (cadr pair)))
-          (map (λ (this-object) (make-triple
+          (map (λ (this-object) (triple
                                  common-subject
                                  common-predicate
                                  (if (literal? this-object) this-object (->literal this-object))))
                this-object-list)))
       predicate-object-list))))
 
-(define (make-anon-statement-list predicate-object-list)
-  (make-statement-list (make-blank-node) predicate-object-list))
+(define (anon-statement-list predicate-object-list)
+  (statement-list (make-blank-node) predicate-object-list))
 
 ;; -------------------------------------------------------------------------------------------------
 ;; Additional Constructors
 ;; -------------------------------------------------------------------------------------------------
 
-(define/contract (statement-add-to-subject stmt predicate object)
-  (-> statement? predicate? object? triple?)
-  (make-triple (get-subject stmt) predicate object))
+(define (statement-add-to-subject stmt predicate object)
+  (triple (get-subject stmt) predicate object))
 
-(define/contract (statement-add-to-object stmt predicate object)
-  (-> statement? predicate? object? triple?)
-  (make-triple (get-object stmt) predicate object))
+(define (statement-add-to-object stmt predicate object)
+  (triple (get-object stmt) predicate object))
 
-(define/contract (make-type-statement subject type)
-  (-> subject? resource? triple?)
-  (make-triple subject rdf:type type))
-
-(define/contract (statement-add-type-to-subject stmt type)
-  (-> statement? resource? triple?)
-  (make-type-statement (get-subject stmt) type))
+(define (statement-add-type-to-subject stmt type)
+  (type-statement (get-subject stmt) type))

@@ -3,41 +3,90 @@
 ;;
 ;; Vocabulary: RDF 1.1
 ;;
-;; Namespace:        <http://www.w3.org/1999/02/22-rdf-syntax-ns#>
 ;; Specification:    <https://www.w3.org/TR/rdf11-schema/>
 ;; Last Date:        2014-02-25
-;; Preferred prefix: `rdf`
 ;;
 ;; Support status: complete
 ;;
 ;; See also: RDF 1.1 Concepts and Abstract Syntax (https://www.w3.org/TR/rdf11-concepts/)
 ;;
 
-(require (only-in "../namespace.rkt" make-namespace make-name))
+(require (only-in "../name.rkt"
+                  string->local-name)
+         (only-in "../namespace.rkt"
+                  string->namespace
+                  make-nsname)
+         (only-in "../nsmap.rkt"
+                  string->prefix
+                  nsmap-set!))
 
 (provide (all-defined-out))
 
-(define rdf: (make-namespace "http://www.w3.org/1999/02/22-rdf-syntax-ns#" "rdf"))
+;; ================================================================================================
+;; Namespace definition
+;; ================================================================================================
 
-(define rdf:lang-String (make-name rdf: "langString"))
-(define rdf:HTML (make-name rdf: "HTML"))
-(define rdf:XML-Literal (make-name rdf: "XMLLiteral"))
+(define rdf-prefix-string "rdf")
+(define rdf-namespace-string "http://www.w3.org/1999/02/22-rdf-syntax-ns#")
 
-(define rdf:Property (make-name rdf: "Property"))
-(define rdf:type (make-name rdf: "type"))
+(define rdf: (string->namespace rdf-namespace-string))
 
-(define rdf:Bag (make-name rdf: "Bag"))
-(define rdf:Seq (make-name rdf: "Sequence"))
-(define rdf:Alt (make-name rdf: "Alt"))
+(define (nsmap-add-rdf map)
+  (nsmap-set! map
+              (string->prefix rdf-prefix-string)
+              (string->namespace rdf-namespace-string)))
 
-(define rdf:List (make-name rdf: "List"))
-(define rdf:first (make-name rdf: "first"))
-(define rdf:rest (make-name rdf: "rest"))
-(define rdf:nil (make-name rdf: "nil"))
+;; ================================================================================================
+;; Name definitions
+;; ================================================================================================
 
-(define rdf:Statement (make-name rdf: "Statement"))
-(define rdf:subject (make-name rdf: "subject"))
-(define rdf:predicate (make-name rdf: "predicate"))
-(define rdf:object (make-name rdf: "object"))
+(define rdf:lang-String
+  (make-nsname rdf: (string->local-name "langString")))
 
-(define rdf:value (make-name rdf: "value"))
+(define rdf:HTML
+  (make-nsname rdf: (string->local-name "HTML")))
+
+(define rdf:XML-Literal
+  (make-nsname rdf: (string->local-name "XMLLiteral")))
+
+(define rdf:Property
+  (make-nsname rdf: (string->local-name "Property")))
+
+(define rdf:type
+  (make-nsname rdf: (string->local-name "type")))
+
+(define rdf:Bag
+  (make-nsname rdf: (string->local-name "Bag")))
+
+(define rdf:Seq
+  (make-nsname rdf: (string->local-name "Sequence")))
+
+(define rdf:Alt
+  (make-nsname rdf: (string->local-name"Alt")))
+
+(define rdf:List
+  (make-nsname rdf: (string->local-name "List")))
+
+(define rdf:first
+  (make-nsname rdf: (string->local-name "first")))
+
+(define rdf:rest
+  (make-nsname rdf: (string->local-name "rest")))
+
+(define rdf:nil
+  (make-nsname rdf: (string->local-name "nil")))
+
+(define rdf:Statement
+  (make-nsname rdf: (string->local-name "Statement")))
+
+(define rdf:subject
+  (make-nsname rdf: (string->local-name "subject")))
+
+(define rdf:predicate
+  (make-nsname rdf: (string->local-name "predicate")))
+
+(define rdf:object
+  (make-nsname rdf: (string->local-name "object")))
+
+(define rdf:value
+  (make-nsname rdf: (string->local-name "value")))

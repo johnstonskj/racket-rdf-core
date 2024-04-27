@@ -16,12 +16,14 @@
           rdf/core/io
           (for-label langtag
                      racket/contract
+                     rdf/core/name
                      rdf/core/namespace
+                     rdf/core/nsmap
                      rdf/core/literal
                      rdf/core/statement
                      rdf/core/triple
-                     rdf/core/quad
                      rdf/core/graph
+                     rdf/core/quad
                      rdf/core/dataset
                      rdf/core/gq
                      rdf/core/io))
@@ -29,485 +31,379 @@
 @;{============================================================================}
 
 @(define example-eval
-   (make-base-eval '(require rdf/core/namespace
+   (make-base-eval '(require racket/bool
+                             rdf/core/name
                              rdf/core/literal
-                             rdf/core/statement))) 
+                             rdf/core/namespace
+                             rdf/core/nsmap)))
 
 @(define compact-list
    (make-style "Compact"
    (list (make-css-addition "scribblings/compact.css"))))
+
+@(define figure-flow
+   (make-style "Figure"
+   (list (make-css-addition "scribblings/figure.css"))))
+
+@(define wide-flow
+   (make-style "Wide"
+   (list (make-css-addition "scribblings/wide.css"))))
 
 @;{============================================================================}
 
 @title[#:version  "0.1.0"]{RDF Core Data Model}
 @author[(author+email "Simon Johnston" "johnstonskj@gmail.com")]
 
-This is the core data model for @as-index{RDF} @cite["RDF11CAS"] in Racket, it also includes core vocabularies such as @tt{rdf},
-@index["RDF Schema"]{@tt{rdfs}}, @tt{xml}, and @tt{xsd} as well as some basic IO functions. The goal of this package is to provide the model
-allowing the user to create statements, graphs and datasets in-memory. Additional Racket packages provide capabilities
-layered on top of this such as support for @as-index{OWL} and @as-index{SPARQL} and additional vocabularies.
+This is the core data model for the Resource Description Framework (RDF) @cite["RDF11CAS"] in Racket. It also includes
+core vocabularies such as @tt{rdf}, @tt{rdfs}, @tt{xml}, and @tt{xsd} as well as some basic IO functions. The goal of
+this package is to provide the model allowing the user to create statements, graphs and datasets in-memory. Additional
+Racket packages provide capabilities layered on top of this such as support for OWL, SPARQL, and additional
+vocabularies.
 
 @table-of-contents[]
+
+@;{============================================================================}
+@;{============================================================================}
+@section[]{Introduction}
+
+The RDF Data Model, or Abstract Syntax @cite["RDF11CAS"], is fundamentally very simple.
+
+Figure 1 is a representation of the data model, extended to include common elements beyond the core described above.
+Elements in the darker shading are the core types of the RDF data model, those in lighter shading are extensions to
+the core types, while those with no shading represent data types.
+
+@nested[#:style figure-flow]{
+  @image["scribblings/rdf-data-model.svg"]
+
+  The RDF Data Model
+}
+
+The kernel of the Data Model is the statement, or @italic{triple}, as shown in the example below.
+
+@verbatim|{
+,---------+-----------+--------,
+| subject | predicate | object |
+'---------+-----------+--------'
+}|
+
+This very simple structure allows multiple statements to be seen as a directed graph where subjects and objects may act
+as pointers between statement. For example in the following example we can see that the first three sentences on the
+left share a common subject, they are all statements about the thing with IRI @tt{<S1>}. The last two sentences are
+similarly related in that they are both statements about the thing with IRI @tt{<S2>}. The last statement is interesting
+because it's object, @tt{<S1>} is the identifier of an existing thing, allowing us to interpret a subset of the
+statements below as @italic{"a thing with name 'Steve' knows a thing with the name 'Simon'"}. Now if we look at the
+two statements in the middle we see that they again share object/subject but the identity of this @italic{thing} is not
+an IRI but is anonymous, interpreted as @italic{"a thing with name 'Simon' has a job, which has a title 'Nerd'"}.
+
+@verbatim|{
+,---------+-----------+---------,
+| <S1>    | is-a      | Person  |
+'---------+-----------+---------'
+,---------+-----------+---------,
+| <S1>    | name      | "Simon" |
+'---------+-----------+---------'
+,---------+-----------+---------,    ,---------+-----------+--------,
+| <S1>    | job       | [?]     |    | [?]     | title     | "Nerd" |
+'---------+-----------+---------'    '---------+-----------+--------'
+,---------+-----------+---------,
+| <S2>    | name      | "Steve" |
+'---------+-----------+---------'
+,---------+-----------+---------,
+| <S2>    | knows     | <S1>    |
+'---------+-----------+---------'
+}|
+
+A @italic{set} of statements is termed a graph to denote this linking behavior. We can therefore draw the list of
+statements in a more graph-like form as follows. This representation clearly shows how a set of statements can easily
+model very complex structures.
+
+@verbatim|{
+,---------,
+| <S1>    |<-----------------------------------------------,
+'--|------'                                                |
+   |        ,-----------+---------,                        |
+   |------->| is-a      | Person  |                        |
+   |        '-----------+---------'                        |
+   |        ,-----------+---------,                        |
+   |------->| name      | "Simon" |                        |
+   |        '-----------+---------'                        |
+   |        ,-----------+---------,                        |
+   '------->| job       | <?>     |                        |
+            '-----------+--|------'                        |
+                           |        ,-----------+--------, |
+                           '------->| title     | "Nerd" | |
+                                    '-----------+--------' |
+,---------,                                                |
+| <S2>    |                                                |
+'--|------'                                                |
+   |        ,-----------+---------,                        |
+   |------->| name      | "Steve" |                        |
+   |        '-----------+---------'                        |
+   |        ,-----------+---------,                        |
+   '------->| knows     | <S1> ----------------------------'
+            '-----------+---------'
+}|
+
+@;{============================================================================}
+@subsection[]{RDF Glossary}
+
+@tabular[#:sep @hspace[2]
+         #:column-properties '(top top)
+         (list
+          (list @bold{Blank Node}
+                @para{A type that allows @italic{anonymous} subjects and objects where grouping is desired but there
+                        is no need for a separate and addressable resource.})
+          (list @bold{Dataset}
+                @para{A collection of named graphs at most one unnamed graph refered to as the @italic{default graph}.
+                        The dataset itself may also be named with an IRI.})
+          (list @bold{Datatype}
+                @para{See @cite["RDF11CAS"], section 5, Datatypes (Normative).})
+          (list @bold{Graph}
+                @para{A @italic{set} of statements, which may be relaxed to become a list of statements allowing
+                        duplicates.})
+          (list @bold{IRI}
+                @para{An @italic{Internationalized Resource Identifiers} @cite["RFC3987"].})
+          (list @bold{Language Tag}
+                @para{See @cite["RFC5646"] (BCP-47).})
+          (list @bold{Literal}
+                @para{This represents a single, scalar, value usually corresponding to one of the data types in
+                           @cite["XMLXSD2"].})
+          (list @bold{Local Name}
+                @para{A ...})
+          (list @bold{Named Graph}
+                @para{A graph with an associated name, this name is an IRI.})
+          (list @bold{Namespace}
+                @para{A resources containing @italic{some representation} of an RDF vocabulary.})
+          (list @bold{Namespace Map}
+                @para{A mapping between @italic{prefix names} and @italic{namespaces}, with at most one unnamed
+                        namespace.})
+          (list @bold{Object}
+                @para{The value of a property, or target of a relation, between a subject and an object. A subject may
+                          be either a @italic{resource}, @italic{blank node}, or @italic{literal}.})
+          (list @bold{Predicate}
+                @para{The name of a @italic{property of}, or @italic{relation between}, a subject and an object.})
+          (list @bold{Representation}
+                @para{A particular serialization form of a resource. In general it is assumed that if a resource may
+                        have multiple representations, each representation is isomorphic.})
+          (list @bold{Resource}
+                @para{Some @italic{thing} identified by one or more IRIs and which is avilable in one or more
+                           representations.})
+          (list @bold{Prefix Name}
+                @para{A ...})
+          (list @bold{Schema}
+                @para{A ... @cite["RDF11SCHEMA"], @cite["OWL2"].})
+          (list @bold{Statement}
+                @para{A triple comprising @italic{subject}, @italic{predicate}, and @italic{object}. In predicate logic
+                        this would be written as @tt{(predicate subject object)}.})
+          (list @bold{Subject}
+                @para{The @italic{thing} about which a statement is made. A subject may be either a @italic{resource} or
+                          @italic{blank node}.})
+          (list @bold{Triple}
+                @para{Another term for a statement.})
+          (list @bold{Vocabulary}
+                @para{A ...})
+ )]
+
+@;{============================================================================}
+@subsection[]{Examples}
+
+The example RDF used below is similar to that used in the figures above. It describes a simple five statement graph
+using a Github profile as the subject. Using different representations of the graph we will see how different aspects
+if the data model in figure 1 are implemented.
+
+@bold{Example 1 -- N-Triples}
+
+The N-Triple @cite["RDF11NT"] representation demonstrates the core elements of the RDF Data Model well as each line
+contains an individual statement terminated by a @tt{"."} and newline.
+
+@nested[#:style 'code-inset]{
+@nested[#:style wide-flow]{
+@verbatim|{
+<https://github.com/johnstonskj> <http://www.w3.org/1999/02/22-rdf-syntax-ns#> <http://xmlns.com/foaf/0.1/Person> .
+<http://github.com/johnstonskj> <http://xmlns.com/foaf/0.1/name> "Simon Johnston"@en .
+<http://github.com/johnstonskj> <http://xmlns.com/foaf/0.1/givenname> "Simon" .
+<http://github.com/johnstonskj> <http://xmlns.com/foaf/0.1/family_name> "Johnston" .
+<http://github.com/johnstonskj> <http://github.com/rdf/followers> "22"^^<http://www.w3.org/2001/XMLSchema#int> .
+}|
+}
+}
+
+As we will see in most representations, IRI values are written between @tt{"<"} and @tt{">"}. Literal values are always
+enclosed in double quotes but come on three forms:
+
+@itemlist[#:style 'ordered
+
+  @item{Plain literals are simple strings.}
+
+  @item{String values may have attached language identifiers to allow for multiple-language variants of a value. The
+               literal value @tt{"Simon Johnston"@"@en"} has a language tag @cite["RFC5646"] after the at-sign.}
+
+  @item{A literal may be explicitly typed, allowing a parser to understand the string value as some other data type.
+          The literal value @tt{"22"^^<...#int>} has the explicit XML Schema @tt{int} datatype.}
+]
+
+@bold{Example 2 -- Turtle}
+
+The following example is identical to the N-Triple version, but using the Turtle @cite["RDF11TTL"] representation. This
+representation shows the use of namespace prefixes to shorten IRIs and generally make the representation more readable.
+The @tt{prefix} directive creates a mapping between a prefix, a string with a colon @tt{":"} suffix, and a namespace
+IRI. Note that a prefix with no string before the colon is termed the @italic{default namespace}. Also note that this
+format uses the semicolon character @tt{";"} to allow multiple predicate-object pairs for the same subject, similar to the
+graph representation above. Each set of statements is still terminated by a @tt{"."} as in N-Triples.
+
+@nested[#:style 'code-inset]{
+@verbatim|{
+@prefix : <http://github.com/>
+@prefix foaf: <http://xmlns.com/foaf/0.1/> .
+@prefix ghub: <http://github.com/rdf/>
+
+:johnstonskj
+  a foaf:Person ;
+  foaf:name "Simon Johnston"@en ;
+  foaf:givenname "Simon" ;
+  foaf:family_name "Johnston" ;
+  ghub:followers "22"^^<http://www.w3.org/2001/XMLSchema#int> .
+}|
+}
+
+Any valid set of RDF statements, including the empty set, is a valid RDF graph. Therefore, the resource holding the
+Turtle example above is a representation of an RDF graph.
+
+@bold{Example 3 -- TriG}
+
+Now we have a graph it is useful to be able to name graphs explicitly and also to document groups of graphs. RDF defines
+a Dataset, described in the introduction to @cite["RDF11DS"] as:
+
+@nested[#:style 'inset]{
+@italic{
+The Resource Description Framework (RDF) version 1.1 defines the concept of RDF datasets, a notion introduced first by
+the SPARQL specification. An RDF dataset is defined as a collection of RDF graphs where all but one are named graphs
+associated with an IRI or blank node (the graph name), and the unnamed default graph. Given that RDF is a data model
+equipped with a formal semantics, it is natural to try and define what the semantics of datasets should be.
+}
+}
+
+Using TriG @cite["RDF11TRIG"] representation, a super-set of Turtle, we can see a new structure of the form
+@tt{graph-name {...}} which binds a graphs's name to the set of statements between @tt{"{"} and  @tt{"}"}. A graph name
+may be either an IRI or a blank-node, in the same way as a statement's subject.
+
+@nested[#:style 'code-inset]{
+@verbatim|{
+@prefix : <http://github.com/>
+@prefix foaf: <http://xmlns.com/foaf/0.1/> .
+@prefix tiny: <https://tinyurl.com/> .
+
+_:G1 {
+  :johnstonskj
+    a foaf:Person ;
+    foaf:name "Simon Johnston"@en ;
+    foaf:givenname "Simon" ;
+    foaf:family_name "Johnston" ;
+    ghub:followers "22"^^<http://www.w3.org/2001/XMLSchema#int> .
+}
+}|
+}
+
+@bold{Example 4 -- N-Quads}
+
+The named graph labeled @tt{_:G1} can also be serialized into a format similar to the N-Triples above, N-Quads
+@cite["RDF11NQ"]. The difference is that each line is now comprised of subject, predicate, object, and the graph's
+label (IRI or blank node).
+
+@nested[#:style 'code-inset]{
+@nested[#:style wide-flow]{
+@verbatim|{
+<http://github.com/johnstonskj> <http://www.w3.org/1999/02/22-rdf-syntax-ns#> <http://xmlns.com/foaf/0.1/Person> _:G1 .
+<http://github.com/johnstonskj> <http://xmlns.com/foaf/0.1/name> "Simon Johnston"@en _:G1 .
+<http://github.com/johnstonskj> <http://xmlns.com/foaf/0.1/givenname> "Simon" _:G1 .
+<http://github.com/johnstonskj> <http://xmlns.com/foaf/0.1/family_name> "Johnston" _:G1 .
+<http://github.com/johnstonskj> <http://github.com/rdf/followers> "22"^^<http://www.w3.org/2001/XMLSchema#int> _:G1 .
+}|
+}
+}
+
+@;{============================================================================}
+@;{============================================================================}
+@section[#:style '(toc)]{Module name}
+@defmodule[rdf/core/name]
+
+Figure 1 in the introduction included a both a @tt{PrefixName} and @tt{LocalName} datatype, but these are actually
+more commonly used in combination, and with the datatype @tt{Namespace}. Figure 2 introduces the type @tt{PrefixedName}
+which is a tuple of prefix and local-name, and the type @tt{NamespacedName} which is a tuple of namespace IRI and
+local-name. Prefixed names can be translated into namespaced names by substituting the prefix name with the corresponding
+namespace in a @tt{NamespaceMap}.
+
+@nested[#:style figure-flow]{
+  @image["scribblings/rdf-names.svg"]
+
+  RDF Name Types
+}
+
+The value space for a local name is sometimes different in RDF implementations, depending on their age and
+representation support. The definitions used in this package are those defined by SPARQL and adopted by Turtle, for
+more information see @secref["Appendix__Names_Defined"].
+
+@defproc[#:kind "predicate"
+         (local-name-string?
+          [v string?])
+         boolean?]{
+This predicate returns @racket[#t] if the value of @racket[v] is valid according to the SPARQL production @tt{PN_LOCAL}.
+
+@examples[
+  #:eval example-eval
+  (local-name-string? "a-valid-name")
+  (local-name-string? 'another-valid-name)
+  (local-name-string? "?")
+  (local-name-string? "")
+]
+}
+
+@defstruct*[local-name () #:constructor-name string->local-name]{
+This structure provides a safe and efficient way to wrap a string that conforms to the predicate
+@racket[local-name-string?]. This ensures that the name cannot be mutated, and the predicate @racket[local-name?] is
+more efficient than parsing the string.
+
+@examples[
+  #:eval example-eval
+  (require racket/list racket/string)
+  (let ((long-name (string-join (map (lambda (_) "this-is-a-long-name")
+                                     (range 1 200))
+                                "-also-")))
+    (time (local-name-string? long-name))
+    (let ((name (string->local-name long-name)))
+      (time (local-name? name))))
+]
+}
+
+@defproc[(local-name->string
+          [v local-name?])
+         local-name-string?]{
+Returns the local name as a string.
+
+@examples[
+  #:eval example-eval
+  (local-name->string (string->local-name "a-valid-name"))
+]
+}
 
 @;{============================================================================}
 @;{============================================================================}
 @section[#:style '(toc)]{Module namespace}
 @defmodule[rdf/core/namespace]
 
-This package actually models @as-index{XML} @cite["XML11"] namespaces, where a namespace is an absolute @as-index{URI} @cite["RFC3986"], or
-@as-index{IRI} @cite["RFC3987"], and which may be associated with a prefix name. Members in the namespace have names which are concatenated
-onto the namespace URI, or may be referenced as qualified names (@italic{qnames}) in the form @tt{prefix:name}.
-
+This module provides types corresponding to a namespace identifier (IRI), as well as a namespaced-name, the tuple
+@tt{(namespace, local-name)}.
 
 @local-table-of-contents[]
 
 @;{============================================================================}
-@subsection[]{Background and Definitions}
-
-The following example shows the use of the RDF, RDF Schema, and Friend-of-a-Friend namespaces to construct an RDF/XML
-@cite["RDF11XML"] document.
-
-@nested[#:style 'code-inset]{
-@verbatim|{
-<rdf:RDF
-  xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#"
-  xmlns:rdfs="http://www.w3.org/2000/01/rdf-schema#"
-  xmlns:foaf="http://xmlns.com/foaf/0.1/">
-
-  <foaf:Person rdf:ID="me">
-    <foaf:name xml:lang="en">Henry Rzepa</foaf:name>
-    <foaf:givenname>Henry</foaf:givenname>
-    <foaf:family_name>Rzepa</foaf:family_name>
-    <foaf:title>Professor</foaf:title>
-    <foaf:img rdf:resource="http://www.ch.ic.ac.uk/rzepa/rzepa_2005.jpg"/>
-    <foaf:nick>rzepa</foaf:nick>
-    <foaf:homepage rdf:resource="http://www.imperial.ac.uk/people/h.rzepa/"/>
-    <foaf:schoolHomepage rdf:resource="http://www.imperial.ac.uk/"/>
-    <foaf:weblog rdf:resource="http://www.ch.ic.ac.uk/rzepa/blog/"/>
-  </foaf:Person>
-</rdf:RDF>
-}|
-}
-
-The same content in Turtle @cite["RDF11TTL"] syntax is:
-
-@nested[#:style 'code-inset]{
-@verbatim|{
-@prefix foaf: <http://xmlns.com/foaf/0.1/> .
-
-<http://example.com/people/#me>
-  a foaf:Person ;
-  foaf:name "Henry Rzepa"@en ;
-  foaf:givenname "Henry" ;
-  foaf:family_name "Rzepa" ;
-  foaf:title "Professor" ;
-  foaf:img <http://www.ch.ic.ac.uk/rzepa/rzepa_2005.jpg> ;
-  foaf:nick "rzepa" ;
-  foaf:homepage <http://www.imperial.ac.uk/people/h.rzepa/> ;
-  foaf:schoolHomepage <http://www.imperial.ac.uk/> ;
-  foaf:weblog <http://www.ch.ic.ac.uk/rzepa/blog/> .
-}|
-}
-
-@itemlist[
-  #:style compact-list
-  @item{A @bold{namespace} is a named collection of @italic{name}s; a namespace's name is an IRI.}
-  @item{A @bold{name}, or  @bold{namespaced-name}, is a unique identifier within a @italic{namespace}. The type for this
-  identifier is the XML Production @tt{NCName} -- see @racket[ncname?].}
-  @item{A @bold{prefix} is a short identifier used in place of a namespace IRI. The type for this identifier is the XML
-  Production @tt{NCName} -- see @racket[ncname?].}
-  @item{A @bold{binding} is a pair consisting of a @italic{prefix} and @italic{namespace} IRI.}
-  @item{A @italic{namespace} @bold{map} is a bi-directional mapping from a set of @italic{prefix}es to
-  @italic{namespace}
-  IRIs.}
-  @item{A @bold{default} @italic{namespace} is a namespace binding where the prefix is empty. A @italic{namespace map}
-  may therefore only have a single default.}
-  @item{A @bold{qualified} name is a combination of a @italic{prefix} identifier and @italic{name} identifier. The type
-  for this value is the XML Production @tt{QName} -- see @racket[qname?].}
-]
-
-@subsubsection[]{Names -- from URIs}
-
-From @cite["RFC3986"], Appendix A -- Collected ABNF for URI:
-
-@nested[#:style 'code-inset]{
-@verbatim|{
-URI           = scheme ":" hier-part [ "?" query ] [ "#" fragment ]
-
-hier-part     = "//" authority path-abempty
-              / path-absolute
-              / path-rootless
-              / path-empty
-
-path-abempty  = *( "/" segment )
-path-absolute = "/" [ segment-nz *( "/" segment ) ]
-path-noscheme = segment-nz-nc *( "/" segment )
-path-rootless = segment-nz *( "/" segment )
-path-empty    = 0<pchar>
-
-segment       = *pchar
-segment-nz    = 1*pchar
-segment-nz-nc = 1*( unreserved / pct-encoded / sub-delims / "@" )
-              ; non-zero-length segment without any colon ":"
-
-pchar         = unreserved / pct-encoded / sub-delims / ":" / "@"
-
-fragment      = *( pchar / "/" / "?" )
-
-pct-encoded   = "%" HEXDIG HEXDIG
-
-unreserved    = ALPHA / DIGIT / "-" / "." / "_" / "~"
-reserved      = gen-delims / sub-delims
-gen-delims    = ":" / "/" / "?" / "#" / "[" / "]" / "@"
-sub-delims    = "!" / "$" / "&" / "'" / "(" / ")"
-              / "*" / "+" / "," / ";" / "="
-}|
-}
-
-From @cite["RFC3987"], Section 2.2 -- ABNF for IRI References and IRIs:
-
-@nested[#:style 'code-inset]{
-@verbatim|{
-IRI            = scheme ":" ihier-part [ "?" iquery ]
-                      [ "#" ifragment ]
-
-ihier-part     = "//" iauthority ipath-abempty
-               / ipath-absolute
-               / ipath-rootless
-               / ipath-empty
-ipath-abempty  = *( "/" isegment )
-ipath-absolute = "/" [ isegment-nz *( "/" isegment ) ]
-ipath-noscheme = isegment-nz-nc *( "/" isegment )
-ipath-rootless = isegment-nz *( "/" isegment )
-ipath-empty    = 0<ipchar>
-
-isegment       = *ipchar
-isegment-nz    = 1*ipchar
-isegment-nz-nc = 1*( iunreserved / pct-encoded / sub-delims
-                     / "@" )
-               ; non-zero-length segment without any colon ":"
-
-ipchar         = iunreserved / pct-encoded / sub-delims / ":"
-               / "@"
-
-ifragment      = *( ipchar / "/" / "?" )
-
-iunreserved    = ALPHA / DIGIT / "-" / "." / "_" / "~" / ucschar
-
-ucschar        = %xA0-D7FF / %xF900-FDCF / %xFDF0-FFEF
-               / %x10000-1FFFD / %x20000-2FFFD / %x30000-3FFFD
-               / %x40000-4FFFD / %x50000-5FFFD / %x60000-6FFFD
-               / %x70000-7FFFD / %x80000-8FFFD / %x90000-9FFFD
-               / %xA0000-AFFFD / %xB0000-BFFFD / %xC0000-CFFFD
-               / %xD0000-DFFFD / %xE1000-EFFFD
-
-iprivate       = %xE000-F8FF / %xF0000-FFFFD / %x100000-10FFFD
-}|
-}
-
-@subsubsection[]{Names -- from Turtle}
-
-From @cite["RDF11TTL"] Section 6.5 -- Grammar:
-
-@nested[#:style 'code-inset]{
-@verbatim|{
-[4]     prefixID       ::= '@prefix' PNAME_NS IRIREF '.'
-
-[6s]    sparqlPrefix   ::= "PREFIX" PNAME_NS IRIREF
-}|
-}
-
-Well-formedness rules:
-
-@itemlist[
-  #:style 'ordered
-
-  @item{
-    @tt{PNAME_NS} as @tt{prefix} When used in a @tt{prefixID} or @tt{sparqlPrefix} production, the prefix is the
-    potentially empty unicode string matching the first argument of the rule is a key into the namespaces map.}
-
-  @item{
-    @tt{PNAME_NS} as @tt{IRI} When used in a @tt{PrefixedName} production, the IRI is the value in the namespaces map
-    corresponding to the first argument of the rule.}
-    
-  @item{
-    @tt{PNAME_LN} as @tt{IRI}	A potentially empty prefix is identified by the first sequence, @tt{PNAME_NS}. The namespaces
-    map must have a corresponding namespace. The unicode string of the IRI is formed by unescaping the reserved
-    characters in the second argument, @tt{PN_LOCAL}, and concatenating this onto the namespace.}
-]
-
-@subsubsection[]{Names -- from SPARQL}
-
-From @cite["SPARQL"] Section 19.8 -- Grammar:
-
-@nested[#:style 'code-inset]{
-@verbatim|{
-[6]    PrefixDecl      ::= 'PREFIX' PNAME_NS IRIREF
-
-[136]  iri             ::= IRIREF | PrefixedName
-
-[140]  PNAME_NS        ::= PN_PREFIX? ':'
-[141]  PNAME_LN        ::= PNAME_NS PN_LOCAL
-
-[164]  PN_CHARS_BASE   ::= [A-Z] | [a-z] | [#x00C0-#x00D6]
-                         | [#x00D8-#x00F6] | [#x00F8-#x02FF]
-                         | [#x0370-#x037D] | [#x037F-#x1FFF]
-                         | [#x200C-#x200D] | [#x2070-#x218F]
-                         | [#x2C00-#x2FEF] | [#x3001-#xD7FF]
-                         | [#xF900-#xFDCF] | [#xFDF0-#xFFFD]
-                         | [#x10000-#xEFFFF]
-[165]  PN_CHARS_U      ::= PN_CHARS_BASE | '_'
-
-[167]  PN_CHARS        ::= PN_CHARS_U | '-' | [0-9] | #x00B7
-                         | [#x0300-#x036F] | [#x203F-#x2040]
-[168]  PN_PREFIX       ::= PN_CHARS_BASE
-                           ( ( PN_CHARS | '.' )* PN_CHARS )?
-[169]  PN_LOCAL        ::= ( PN_CHARS_U | ':' | [0-9] | PLX )
-                           ( ( PN_CHARS | '.' | ':' | PLX )*
-                             ( PN_CHARS | ':' | PLX ) )?
-[170]  PLX             ::= PERCENT | PN_LOCAL_ESC
-[171]  PERCENT         ::= '%' HEX HEX
-[172]  HEX             ::= [0-9] | [A-F] | [a-f]
-[173]  PN_LOCAL_ESC    ::= '\' ( '_' | '~' | '.' | '-' | '!' | '$'
-                               | '&' | "'" | '(' | ')' | '*' | '+'
-                               | ',' | ';' | '=' | '/' | '?' | '#'
-                               | '@' | '%' )
-}|
-}
-
-From section 19.5 (IRI References):
-
-@nested[#:style 'inset]{
-Text matched by the @tt{IRIREF} production and @tt{PrefixedName} (after prefix expansion) production, after escape
-processing, must conform to the generic syntax of IRI references in section 2.2 of RFC 3987 "ABNF for IRI References and
-IRIs". For example, the @tt{IRIREF} @tt{<abc#def>} may occur in a SPARQL query string, but the @tt{IRIREF}
-@tt{<abc##def>} must not.
-}
-
-@subsubsection[]{Names -- from XML}
-
-From @cite["XML11"]:
-
-@nested[#:style 'code-inset]{
-@verbatim|{
-[4]    NameStartChar   ::= ":" | [A-Z] | "_" | [a-z] | [#xC0-#xD6]
-                         | [#xD8-#xF6]
-                         | [#xF8-#x2FF] | [#x370-#x37D]
-                         | [#x37F-#x1FFF]| [#x200C-#x200D]
-                         | [#x2070-#x218F] | [#x2C00-#x2FEF]
-                         | [#x3001-#xD7FF] | [#xF900-#xFDCF]
-                         | [#xFDF0-#xFFFD] | [#x10000-#xEFFFF]
-[4a]   NameChar        ::= NameStartChar | "-" | "." | [0-9] | #xB7
-                         | [#x0300-#x036F] | [#x203F-#x2040]
-[5]    Name            ::= NameStartChar (NameChar)*
-}|
-}
-
-Note that tags (@tt{STag} and @tt{ETag}) as well as @tt{Attributes} use the @tt{Name} production above.
-
-From @cite["XMLNAMES"]:
-
-@nested[#:style 'code-inset]{
-@verbatim|{
-[4]    NCName          ::= Name - (Char* ':' Char*)
-                           /* An XML Name, minus the ":" */
-
-[7]    QName           ::= PrefixedName | UnprefixedName
-[8]    PrefixedName    ::= Prefix ':' LocalPart
-[9]    UnprefixedName  ::= LocalPart
-[10]   Prefix          ::= NCName
-[11]   LocalPart       ::= NCName
-}|
-}
-
-Note that tags (@tt{STag} and @tt{ETag}) as well as @tt{Attributes} now use the @tt{QName} production above.
-
-@cite["RDF11XML"], Section 8 -- Serializing an RDF Graph to RDF/XML, states:
-
-@nested[#:style 'inset]{
-There are some RDF Graphs as defined in @cite["RDF11CAS"] that cannot be serialized in RDF/XML.
-These are those that:
-
-@bold{Use property names that cannot be turned into XML namespace-qualified names.}
-@nested[#:style 'inset]{
-An XML namespace-qualified name (QName) has restrictions on the legal characters
-such that not all property URIs can be expressed as these names. It is recommended
-that implementors of RDF serializers, in order to break a URI into a namespace name
-and a local name, split it after the last XML non-NCName character, ensuring that
-the first character of the name is a Letter or '_'. If the URI ends in a non-NCName
-character then throw a "this graph cannot be serialized in RDF/XML" exception or error.
-}
-@bold{Use inappropriate reserved names as properties}
-@nested[#:style 'inset]{
-For example, a property with the same URI as any of the syntaxTerms production.
-}
-}
-
-@subsubsection[]{Names -- CURIEs}
-
-@cite["CURIE"] states @italic{This document defines a generic, abbreviated syntax for expressing URIs. This syntax is
-intended to be used as a common element by language designers. Target languages include, but are not limited to, XML
-languages. The intended audience for this document is Language designers, not the users of those Languages.}
-
-The relation between a CURIE (Compact URI) and the XML @tt{QName} is described as:
-
-@nested[#:style 'inset]{
-In many cases, language designers are attempting to use QNames for this extension mechanism. QNames
-do permit independent management of the name collection, and can map the names to a resource. Unfortunately, QNames are
-unsuitable in most cases because 1) the use of QName as identifiers in attribute values and element content is
-problematic as discussed in [QNAMES], and 2) the syntax of QNames is overly-restrictive and does not allow all possible
-URIs to be expressed.
-}
-
-Later, @italic{Syntactically, CURIEs are a superset of QNames.}.
-
-@nested[#:style 'code-inset]{
-@verbatim|{
-safe_curie     := '[' curie ']'
-               := #rx"(([\i-[:]][\c-[:]]*)?:)?.+"
-
-curie          := [ [ prefix ] ':' ] reference
-               := #rx"\[(([\i-[:]][\c-[:]]*)?:)?.+\]"
-
-prefix         := NCName            (as defined in XML11)
-
-reference      := irelative-ref     (as defined in RFC3987)
-}|
-}
-
-Which requires the following components from [RFC3987]:
-
-@nested[#:style 'code-inset]{
-@verbatim|{
-irelative-ref  = irelative-part [ "?" iquery ] [ "#" ifragment ]
-
-irelative-part = "//" iauthority ipath-abempty
-                    / ipath-absolute
-iauthority     = [ iuserinfo "@" ] ihost [ ":" port ]
-...
-}|
-}
-
-@;{============================================================================}
-@subsection[]{Identifier Names}
-
-@defproc[#:kind "predicate"
-         (ncname?
-          [val any/c])
-         boolean?]{
-Predicate to check that the value @italic{val} is a string matching the XML grammar @tt{NCName} rule. Either a string
-value or symbol is expected, any other type returns false.
-
-@examples[
-  #:eval example-eval
-  (ncname? "a-valid-name")
-  (ncname? 'another-valid-name)
-  (ncname? "?")
-  (ncname? "")
-]
-}
-
-@defproc[#:kind "predicate"
-         (qname?
-          [val any/c])
-         boolean?]{
-Predicate to check that the value @italic{val} is a string matching the XML grammar @tt{QName} rule.
-
-@examples[
-  #:eval example-eval
-  (qname? "xml:lang")
-  (qname? "xml:")
-  (qname? ":lang")
-  (qname? "xml")
-  (qname? 'rdf:)
-  (qname? 'rdf:Resource)
-]
-}
-
-@defproc[(string->ncname
-          [val string?])
-         (or/c string? #f)]{
-Returns a mutable string whose characters are the same as in @italic{val}, if it is a valid @racket[ncname].
-}
-
-@defproc[(symbol->ncname
-          [val symbol?])
-         (or/c string? #f)]{
-Returns a mutable string whose characters are the same as in @italic{val}, if it is a valid @racket[ncname].
-}
-
-@;{============================================================================}
 @subsection[]{Namespaces}
-
-For the @italic{url} component of a namespace, the contract @racket[url-absolute?] is a minimal requirement.
-if the parameter @racket[ensure-namespace-url-safety] is @racket[#t] the contract is actually
-@racket[url-namespace-safe?].
-
-@defstruct*[namespace
-            ([url url-absolute?]
-            [prefix ncname?])]{
-This structure represents an XML namespace, and by extension an RDF namespace. It is primarily the URI for the
-namespace but also holds the default prefix @tt{NCName}.
-}
-
-@defproc[#:kind "constructor"
-         (make-namespace
-          [url (or/c url-absolute? string?)]
-          [prefix ncname?])
-         namespace?]{
-Returns a new @racket[namespace] structure. 
-}
-
-@defproc[#:kind "constructor"
-         (namespace-make-url
-          [ns namespace?]
-          [name ncname?])
-         url-absolute?]{
-Returns a new URI by appending the value of @italic{name} to the namespace's URI.
-
-@examples[
-  #:eval example-eval
-  (require net/url-string)
-  (url->string
-    (namespace-make-url
-      (make-namespace "http://example.com/schema/things#" "things")
-      "ThingOne"))
-]
-}
-
-@defproc[#:kind "constructor"
-         (namespace-make-qname
-          [ns namespace?]
-          [name ncname?])
-         qname?]{
-Returns a new XML @tt{QName} by appending the @italic{name} to the namespace's prefix.
-
-@examples[
-  #:eval example-eval
-  (namespace-make-qname
-    (make-namespace "http://example.com/schema/things#" "things")
-    "ThingTwo")
-]
-}
-
-@defproc[#:kind "constructor"
-         (namespace-make-default-qname
-          [ns namespace?])
-         string?]{
-Returns a new XML @tt{QName} from the namespace prefix only.
-
-@examples[
-  #:eval example-eval
-  (namespace-make-default-qname
-    (make-namespace "http://example.com/schema/things#" "things"))
-]
-}
 
 @defproc[#:kind "predicate"
          (url-absolute?
           [val any/c])
          boolean?]{
-Predicate to check that the value @italic{val} is a @racket[url?] struct, and is absolute.
+Predicate to check that the value @italic{val} is a @racket[url?], and is an absolute URI, not relative.
 
 @examples[
   #:eval example-eval
@@ -518,64 +414,152 @@ Predicate to check that the value @italic{val} is a @racket[url?] struct, and is
 }
 
 @defproc[#:kind "predicate"
-         (url-namespace-safe?
+         (namespace-url?
           [val any/c])
          boolean?]{
-Predicate to check that the value @italic{val} is a @racket[url-absolute?], and either ends in a path separator "/" or an
-empty fragment identifier "#".
+Predicate to check that the value @italic{val} is a @racket[url-absolute?], @bold{and} either ends in a path separator
+@tt{"/"} or an empty fragment identifier @tt{"#"}.
 
 @examples[
   #:eval example-eval
   (require net/url-string)
-  (url-namespace-safe? (string->url "/some/other/path"))
-  (url-namespace-safe? (string->url "http://example.com/some/path"))
-  (url-namespace-safe? (string->url "http://example.org/schema/nspace#"))
-  (url-namespace-safe? (string->url "http://example.org/schema/nspace/"))
-  (url-namespace-safe? (string->url "http://example.org/"))
+  (namespace-url? (string->url "/some/other/path"))
+  (namespace-url? (string->url "http://example.com/some/path"))
+  (namespace-url? (string->url "http://example.org/schema/nspace#"))
+  (namespace-url? (string->url "http://example.org/schema/nspace/"))
+  (namespace-url? (string->url "http://example.org/"))
 ]
 }
 
-@defparam[ensure-namespace-url-safety namespace-safe namespace-safe? #:value #t]{
-When set to @racket[#t] constructors that accept URI values intended as namespace identifiers will fail with a contract
-exception if the value is not @racket[url-namespace-safe?].
+@; ---------- struct namespace  ----------
 
+@defstruct*[namespace () #:constructor-name url->namespace]{
+This structure provides a safe and efficient way to wrap a @racket[url?] that conforms to the predicate
+@racket[namespace-url?]. This ensures that the namespace cannot be mutated, and the predicate @racket[namespace?] is
+more efficient than parsing the URI (see @racket[local-name?] for a comparison).
+}
+
+@defproc[#:kind "constructor"
+         (string->namespace
+          [url string?])
+         namespace?]{
+Returns a new @racket[namespace?] structure by parsing the provided @racket[url] string.
+}
+
+@defproc[(namespace->url
+          [ns namespace?])
+         namespace-url?]{
+Returns the namespace URI as a @racket[url?] structure.
+}
+
+@defproc[(namespace->string
+          [ns namespace?])
+         string?]{
+Returns a string representation of the namespace @racket[ns] URI.
+}
+
+@defproc[(namespace+name->url
+          [ns namespace?]
+          [name (or/c local-name-string? local-name?)])
+         url-absolute?]{
+Returns a new URI by appending the value of @racket[name] to the URI value of @racket[ns].
 
 @examples[
   #:eval example-eval
   (require net/url-string)
-  (parameterize ((ensure-namespace-url-safety #f))
-    (make-namespace (string->url "http://example.org/schema/nspace#") 'schema)
-    (make-namespace (string->url "http://example.org/schema/nspace") 'schema)
-    #t)
-  (parameterize ((ensure-namespace-url-safety #t))
-    (make-namespace (string->url "http://example.org/schema/nspace#") 'schema)
-    (make-namespace (string->url "http://example.org/schema/nspace") 'schema)
-    #t)
+  (url->string
+    (namespace+name->url
+      (string->namespace "http://example.com/schema/things#")
+      "ThingOne"))
 ]
 }
 
 @;{============================================================================}
 @subsection[]{Namespaced Names}
 
-@defstruct*[name
+A @racket[namespaced-name] comprises a name and corresponding namespace, commonly noted as a tuple
+@tt{(namespace, local-name)}.
+
+@defstruct*[nsname
             ([namespace namespace?]
-             [name ncname?])]{
-Models a namespaced-name in XML.
+             [name local-name?])]{
+The @racket[namespace] and @racket[local-name] pair.
+
+@examples[
+  #:eval example-eval
+  (require net/url-string)
+  (let ((ex-name (nsname (string->namespace "http://example.org/schema/nspace/")
+                         (string->local-name "Name"))))
+    (displayln (nsname-namespace ex-name))
+    (displayln (nsname-name ex-name)))
+]
 }
 
 @defproc[#:kind "constructor"
-         (make-name
-          [namespace namespace?]
-          [name ncname?])
+         (make-nsname
+          [namespace (or/c string? namespace-url? namespace?)]
+          [name (or/c local-name-string? local-name?)])
          name?]{
-Returns a new @racket[name] from the @italic{namespace} and the value of @italic{name}.
+Returns a new @racket[nsname] from the @racket[namespace] and the value of @racket[name].
+This is a wrapper around the @racket[nsname] constructor and takes a relaxed set of types for ease of use.
+
+@examples[
+  #:eval example-eval
+  (require net/url-string)
+  (let ((ex-name (make-nsname "http://example.org/schema/nspace/" "Name")))
+    (displayln (nsname-namespace ex-name))
+    (displayln (nsname-name ex-name)))
+]
+}
+
+@defproc[(nsname->url
+          [nsname nsname?])
+         url-absolute?]{
+Returns a new URI concatenating the name's namespace IRI and local name values.
+
+@examples[
+  #:eval example-eval
+  (nsname->url
+   (url->nsname
+    (string->url "http://example.org/schema/nspace#name")))
+]
+}
+
+@defproc[(nsname->string
+          [nsname nsname?])
+         string?]{
+Returns a new string concatenating the name's namespace IRI and local name values.
+
+@examples[
+  #:eval example-eval
+  (nsname->string
+   (url->nsname
+    (string->url "http://example.org/schema/nspace#name")))
+]
+}
+
+@defproc[(nsname-make-nsname
+          [from nsname?]
+          [name (or/c local-name-string? local-name?)])
+         nsname?]{
+Returns a new @racket[nsname?] concatenating the namespace IRI from @racket[from] and @racket[name].
+
+@examples[
+  #:eval example-eval
+  (require net/url-string)
+  (let* ((ex-name (make-nsname "http://example.org/schema/nspace/" "Name"))
+         (new-name (nsname-make-nsname ex-name "New")))
+    (displayln (format "~a => ~a"
+                       (local-name->string (nsname-name ex-name))
+                       (local-name->string (nsname-name new-name)))))
+]
 }
 
 @defproc[(url->namespace+name
           [url url-absolute?])
          (or/c (cons/c url-absolute? string?) #f)]{
-If the value of @italic{url} has a fragment part, return @italic{url} minus the fragment as the namespace and the
-fragment value as the name. If the value of @italic{url} has a path with a final segment, return @italic{url} minus the
+If the value of @racket[url] has a fragment part, return @racket[url] minus the fragment as the namespace and the
+fragment value as the name. If the value of @racket[url] has a path with a final segment, return @racket[url] minus the
 final path segment as the namespace and the path's final segment value as the name. If neither of these conditions are
 met the URI is not a valid namespaced-name and the value @racket[#f] is returned.
 
@@ -589,17 +573,20 @@ met the URI is not a valid namespaced-name and the value @racket[#f] is returned
   (url->namespace+name (string->url "http://example.org"))
 ]
 }
-         
-@defproc[(name->url
-          [name ncname?])
-         url-absolute?]{
-Returns a new URI from the name's namespace @italic{url} and the @italic{name} value.
-}
 
-@defproc[(name->qname
-          [name ncname?])
-         qname?]{
-Returns a new @tt{QName} from the name's namespace @italic{prefix} and the @italic{name} value.
+@defproc[(url->nsname [url url-absolute?]) nsname?]{
+Returns a new @racket[nsname] from the components returned by calling @racket[url->namespace+name] with the value
+@racket[url].
+
+@examples[
+  #:eval example-eval
+  (url->nsname (string->url "http://example.org/schema/nspace#name"))
+  (url->nsname (string->url "http://example.org/schema/nspace/name"))
+  (url->namespace+name (string->url "http://example.org/schema/nspace#"))
+  (url->namespace+name (string->url "http://example.org/schema/nspace/name/"))
+  (url->namespace+name (string->url "http://example.org/"))
+  (url->namespace+name (string->url "http://example.org"))
+]
 }
 
 @;{============================================================================}
@@ -607,28 +594,219 @@ Returns a new @tt{QName} from the name's namespace @italic{prefix} and the @ital
 @section[#:style '(toc)]{Module nsmap}
 @defmodule[rdf/core/nsmap]
 
-Namespace maps are used to create qualified names in serialization formats such as Turtle, or SPARQL. 
-A namespace map allows bi-directional lookups between the namespace URI and prefix.
+Namespace maps are used to create qualified names in serialization formats such as Turtle, or SPARQL. A namespace map
+allows bi-directional lookups between the @racket[namespace] URI and @racket[prefix].
 
 @local-table-of-contents[]
 
 @;{============================================================================}
-@subsection[]{Namespace-Map Type}
+@subsection[]{Prefixes}
 
-@defstruct*[nsmap
-            ([(nshash #:mutable) (hash/c (or/c ncname? #f) url-absolute?)])]{
+A @racket[prefix] is the string mapped to a namespace in a namespace map. This prefix can be used in place of the
+complete namespace URI.
+
+@defproc[#:kind "predicate"
+         (prefix-string? [v any/c]) boolean?]{
+Returns @racket[#t] if @racket[v] is a string and the string conforms to the SPARQL production @tt{PNAME_NS}.
+}
+
+@defproc[#:kind "predicate"
+         (prefix-name-string? [v any/c]) boolean?]{
+Returns @racket[#t] if @racket[v] is a string and the string conforms to the SPARQL production @tt{PN_PREFIX}.
+}
+
+@defstruct*[prefix () #:omit-constructor]{
+This structure provides a safe and efficient way to wrap either a string that conforms to the predicate
+@racket[prefix-string?] or the @italic{empty} value. This ensures that the name cannot be mutated, and the predicate
+@racket[prefix-name?] is more efficient than parsing the string.
+}
+
+@defproc[#:kind "constructor"
+         (string->prefix
+          [str (or/c prefix-string? prefix-name-string?)])
+         prefix?]{
+Returns a new @racket[prefix] if the value of @racket[str] is a valid @racket[prefix-string?].
+}
+
+@defproc[#:kind "constructor"
+         (empty-prefix)
+         prefix?]{
+Returns an @italic{empty} prefix name.
+}
+
+@defproc[#:kind "predicate"
+         (prefix-empty? [v any/c]) boolean?]{
+
+@examples[
+  #:eval example-eval
+(prefix-empty? (string->prefix "rdf:"))
+(prefix-empty? (string->prefix ":"))
+(prefix-empty? (empty-prefix))
+]
+}
+
+@defproc[(prefix->string
+          [nsprefix prefix?])
+         string?]{
+
+@examples[
+  #:eval example-eval
+(prefix->string (string->prefix "rdf:"))
+(prefix->string (string->prefix ":"))
+(prefix->string (empty-prefix))
+]
+}
+
+@;{============================================================================}
+@subsection[]{Prefixed Names}
+
+A @racket[prefixed-name] comprises a name and corresponding prefix, commonly noted as a tuple @tt{(prefix, local-name)}.
+
+@defthing[prefixed-name-separator char?]{
+The colon character used to separate the prefix and local name parts of a prefixed name.
+}
+
+@defproc[#:kind "predicate"
+         (prefixed-name-string? [v any/c]) boolean?]{
+Returns @racket[#t] if @italic{v} is a string, and that string is a prefixed name according to the SPARQL production
+@tt{PrefixedName}.
+
+}
+
+@defstruct*[prefixed-name
+            ([prefix (or/c prefix-name? #f)]
+             [name local-name? ])]{
+The @racket[prefix] and @racket[local-name] pair.
+}
+
+@defproc[#:kind "constructor"
+         (make-prefixed-name
+          [prefix  (or/c prefix-string? prefix-name?)]
+          [name (or/c local-name-string? local-name?)])
+         prefixed-name?]{
 TBD
+
+@examples[
+  #:eval example-eval
+(prefixed-name->string
+ (make-prefixed-name (string->prefix "rdf:") "Hello"))
+(prefixed-name->string
+ (make-prefixed-name ":" "Hello"))
+(prefixed-name->string
+ (make-prefixed-name (empty-prefix) "Hello"))
+]
+}
+
+@defproc[#:kind "constructor"
+         (string->prefixed-name
+          [str prefixed-name-string?])
+         prefixed-name?]{
+TBD
+}
+
+@defproc[(prefixed-name->string
+          [name prefixed-name?])
+         prefixed-name-string?]{
+TBD
+}
+
+@defproc[(namespaced-name->prefixed-name
+          [map nsmap?]
+          [name nsname?])
+         prefixed-name?]{
+See @racket[namespace+name->prefixed-name].
+}
+
+@defproc[(namespace+name->prefixed-name
+          [map nsmap?]
+          [ns namespace?]
+          [name local-name-string?])
+         prefixed-name?]{
+Returns a new @racket[prefixed-name] if @racket[ns] is in @racket[map], else @racket[#f].
+
+@examples[
+  #:eval example-eval
+  (let ((map (make-common-nsmap)))
+    (prefixed-name->string
+     (namespace+name->prefixed-name
+      map
+      (string->namespace "http://purl.org/dc/terms/")
+      (string->local-name "description"))))
+]
+}
+
+@defproc[(prefixed-name->nsname
+          [nsmap nsmap?]
+          [name prefixed-name?])
+         (or/c nsname? #f)]{
+See @racket[prefix+name->nsname].
+}
+
+@defproc[(prefix+name->nsname
+          [map nsmap?]
+          [prefix namespace-prefix?]
+          [name local-name-string?])
+         nsname?]{
+Returns a new @racket[nsname] if the @racket[prefix] is in @racket[map], else @racket[#f].
+
+@examples[
+  #:eval example-eval
+  (let ((map (make-common-nsmap)))
+    (url->string
+     (nsname->url
+      (prefix+name->nsname
+       map
+       (string->prefix "dcterms:")
+       (string->local-name "description")))))
+]
+}
+
+@defproc[(prefixed-name->url
+          [nsmap nsmap?]
+          [name prefixed-name?])
+         (or/c url-absolute? #f)]{
+See @racket[prefix+name->url].
+}
+
+@defproc[(prefix+name->url
+          [map nsmap?]
+          [prefix namespace-prefix?]
+          [name local-name-string?])
+         url-absolute?]{
+Returns a new @racket[url] if @racket[prefix] is in @racket[map], else @racket[#f].
+
+@examples[
+  #:eval example-eval
+  (let ((map (make-common-nsmap)))
+    (url->string
+     (prefix+name->url
+      map
+      (string->prefix "dcterms:")
+      (string->local-name "description"))))
+]
+}
+
+@;{============================================================================}
+@subsection[]{Namespace Map}
+
+A namespace map is essential in serializing and deserializing RDF datasets, graphs, and statements.
+
+@defstruct*[nsmap ()]{
+This struct wraps a @racket[hash] between @racket[prefix] and @racket[namespace] values.
+}
+
+@defproc[#:kind "constructor"
+         (make-common-nsmap)
+         nsmap?]{
+Returns a new @racket[nsmap] containing mappings for commonly used namespaces.
 }
 
 @defproc[#:kind "constructor"
          (make-nsmap
-          [ns-list (listof namespace?) '()])
-         ns-map?]{
-TBD
+          [assocs (listof (cons/c prefix? namespace?)) '()])
+         nsmap?]{
+Returns a new @racket[nsmap] containing the mappings in @racket[assocs].
 }
-
-@;{============================================================================}
-@subsection[]{Namespace-Map Predicates and Counters}
 
 @defproc[#:kind "predicate"
          (nsmap-empty?
@@ -644,7 +822,6 @@ TBD
 }
 
 @;{============================================================================}
-@subsection[]{Namespace Mapping}
 
 @defproc[(nsmap-has-prefix?
           [map nsmap?]
@@ -854,7 +1031,7 @@ Returns true if this literal has a datatype URI @italic{and} that URI is in the 
           [val literal?]
           [datatype url-absolute?])
          boolean?]{
-Returns true if this literal has a datatype URI @italic{and} that URI is @racket[equal?] to @italic{datatype}.
+Returns true if this literal has a datatype URI @italic{and} that URI is @racket[equal?] to @racket{datatype}.
 }
 
 @;{============================================================================}
@@ -917,17 +1094,22 @@ Returns a new typed literal with the datatype @tt{xsd:time}.
 @defproc[(->literal
           [val (or/c boolean? bytes? date? string? exact-integer? flonum? inexact?)])
          literal?]{
-Attempts to create a literal from @italic{val} if it matches one of the type predicates listed.
+Attempts to create a literal from @racket{val} if it matches one of the type predicates listed.
 }
 
 @;{============================================================================}
 @subsection[]{Predefined Literals}
 
 @defthing[literal-true literal?]{The value @racket[#t] as a literal value.}
+
 @defthing[literal-false literal?]{The value @racket[#f] as a literal value.}
+
 @defthing[literal-empty-string literal?]{The value @racket[""] as a literal value.}
+
 @defthing[literal-exact-zero literal?]{The value @racket[0] as a literal value.}
+
 @defthing[literal-flonum-zero literal?]{The value @racket[0.0] as a literal value.}
+
 @defthing[literal-inexact-zero literal?]{The value @racket[0.0] as a literal value.}
 
 @;{============================================================================}
@@ -947,9 +1129,8 @@ with predicates and structures of their own.
 A blank node is used as either a subject or object in a graph that is able to link statements where no resource
 represents the concept.
 
-@defstruct*[blank-node
-            ([label ncname?])]{
-This struct wraps a single immutable field @italic{label}.
+@defstruct*[blank-node () #:omit-constructor]{
+This struct wraps a single @italic{label} value of type @racket[local-name?].
 }
 
 @defproc[#:kind "constructor"
@@ -959,13 +1140,19 @@ Returns a new blank node with a unique label. The current implementation guarant
 identifiers within the same process, two processes running separately may generate overlapping identifiers.
 }
 
+@defproc[(blank-node->string
+          [node blank-node?])
+         string?]{
+TBD
+}
+
 @subsection[]{Component Predicates}
 
 @defproc[#:kind "predicate"
          (resource?
           [val any/c])
          boolean?]{
-A resource is identified by a URI, and so this test effectively ensures that @italic{val} is an absolute URI.
+A resource is identified by a URI, and so this test effectively ensures that @racket[val] is an absolute URI.
 }
 
 @defproc[#:kind "predicate"
@@ -1013,13 +1200,6 @@ TBD
 TBD
 }
 
-@defproc[#:kind "predicate"
-         (statement-list?
-          [val any/c])
-         boolean?]{
-TBD
-}
-
 The generic interface @racket[gen:statement] has the following methods:
 
 @nested[#:style 'inset]{
@@ -1049,6 +1229,13 @@ The generic interface @racket[gen:statement] has the following methods:
 
 @;{============================================================================}
 @subsection[]{Statement Conversion}
+
+@defproc[#:kind "predicate"
+         (statement-list?
+          [val any/c])
+         boolean?]{
+TBD
+}
 
 @defproc[(statement->list
           [stmt statement?])
@@ -1084,14 +1271,6 @@ TBD
 Implements the generic interface @racket[gen:statement].
 }
 
-@defproc[(make-triple
-          [subject subject?]
-          [predicate predicate?]
-          [object object?])
-         triple?]{
-TBD
-}
-
 @defproc[(list->triple
           [stmt (list/c subject? predicate? object?)])
          triple?]{
@@ -1099,13 +1278,7 @@ Convert a list of three components into a triple structure. This is the opposite
 @racket[statement->list].
 }
 
-@defproc[(statement->reified-triples
-          [stmt statement?])
-         (listof triple?)]{
-TBD
-}
-
-@defproc[(make-reified-triples
+@defproc[(reify
           [subject subject?]
           [predicate predicate?]
           [object object?])
@@ -1113,10 +1286,16 @@ TBD
 TBD
 }
 
+@defproc[(statement->reified-triples
+          [stmt statement?])
+         (listof triple?)]{
+See @racket[reify].
+}
+
 @;{============================================================================}
 @subsection[]{Additional Constructors}
 
-@defproc[(make-statement-list
+@defproc[(statement-list
           [subject subject?]
           [predicate-object-list (listof (list/c predicate? (or/c object? (listof object?))))])
          (listof triple?)]{
@@ -1147,7 +1326,7 @@ TBD
 TBD
 }
 
-@defproc[(make-type-statement
+@defproc[(type-statement
           [subject subject?]
           [type resource?])
          triple?]{
@@ -1173,12 +1352,6 @@ Package Description Here
 @;{============================================================================}
 @subsection[]{Graph Type}
 
-@defstruct*[graph
-            ([name graph-name?]
-             [(statements #:mutable) statement-list?])]{
-TBD
-}
-
 @defproc[#:kind "predicate"
          (graph-name?
           [val any/c])
@@ -1187,15 +1360,21 @@ A graph name is either a @racket[subject?] (which expands to @racket[resource?] 
 for the default graph.
 }
 
+@defstruct*[graph
+            ([name graph-name?]
+             [(statements #:mutable) statement-list?])]{
+TBD
+}
+
 @defproc[#:kind "constructor"
-         (make-default-graph
+         (unnamed-graph
           [statements statement-list?])
          graph?]{
 Returns a new @racket[graph?] that has no name. In this case the value of @racket[graph-name] is @racket[#f].
 }
 
 @defproc[#:kind "constructor"
-         (make-named-graph
+         (named-graph
           [name graph-name?]
           [statements statement-list?])
          graph?]{
@@ -1209,7 +1388,7 @@ Return the name of the @italic{graph}, if it was created as a default graph retu
 }
 
 @;{============================================================================}
-@subsection[]{Graph Predicates}
+@subsection[]{Graph Predicates & Properties}
 
 @defproc[#:kind "predicate"
          (graph-named?
@@ -1232,8 +1411,20 @@ Return @racket[#t] if this graph contains no statements.
 TBD
 }
 
+@defproc[(graph-count
+          [graph graph?])
+         exact-positive-integer?]{
+Returns the number of statements in the graph.
+}
+
+@defproc[(graph-order
+          [graph graph?])
+         exact-positive-integer?]{
+Returns the @italic{order} of the graph, or the number of vertices.
+}
+
 @;{============================================================================}
-@subsection[]{Graph Indices}
+@subsection[]{Indices}
 
 @defthing[graph-index-kind/c]{
 A contract defining the set of suport index types.
@@ -1274,22 +1465,6 @@ Create a new index in @italic{graph}, of kind @italic{index-kind}, if one does n
 Remove an index in @italic{graph}, of kind @italic{index-kind}, if it exist.
 }
 
-
-@;{============================================================================}
-@subsection[]{Graph Counters}
-
-@defproc[(graph-count
-          [graph graph?])
-         exact-positive-integer?]{
-Returns the number of statements in the graph.
-}
-
-@defproc[(graph-order
-          [graph graph?])
-         exact-positive-integer?]{
-Returns the @italic{order} of the graph, or the number of vertices.
-}
-
 @;{============================================================================}
 @subsection[]{Statement Members}
 
@@ -1303,7 +1478,7 @@ Return @racket[#t] if @italic{statement} exists in @italic{graph}.
 @defproc[(graph-add
           [graph graph?]
           [statement statement?])
-         graoh?]{
+         graph?]{
 TBD
 }
 
@@ -1342,7 +1517,7 @@ Returns a copy of this graph with all statements removed. This does not affect t
 }
 
 @;{============================================================================}
-@subsection[]{Graph Filtering}
+@subsection[]{Graph Filters}
 
 @defproc[(graph-distinct-subjects
           [graph graph?])
@@ -1477,21 +1652,28 @@ Package Description Here
 @subsection[]{Dataset Type}
 
 @defstruct*[dataset
-            ([name resource?]
+            ([name (or/c resource? #f)]
              [(graphs #:mutable) (hash/c graph-name? graph?)])]{
 TBD
 }
 
 @defproc[#:kind "constructor"
-         (make-dataset
-          [name resource?]
+         (unnamed-dataset
+          [graphs (hash/c graph-name? graph?)])
+         dataset?]{
+TBD
+}
+
+@defproc[#:kind "constructor"
+         (named-dataset
+          [name (or/c resource? #f)]
           [graphs (hash/c graph-name? graph?)])
          dataset?]{
 TBD
 }
 
 @;{============================================================================}
-@subsection[]{Dataset Predicates}
+@subsection[]{Dataset Predicates & Properties}
 
 @defproc[#:kind "predicate"
          (dataset-empty?
@@ -1499,9 +1681,6 @@ TBD
          boolean?]{
 TBD
 }
-
-@;{============================================================================}
-@subsection[]{Dataset Counters}
 
 @defproc[(dataset-count
           [ds dataset?])
@@ -1650,23 +1829,6 @@ Package Description Here
 @;{============================================================================}
 @subsection[]{Pattern Component}
 
-
-From @cite["SPARQL"] Section 19.8 -- Grammar:
-
-@nested[#:style 'code-inset]{
-@verbatim|{
-[164]    PN_CHARS_BASE  ::= [A-Z] | [a-z] | [#x00C0-#x00D6] | [#x00D8-#x00F6]
-                          | [#x00F8-#x02FF] | [#x0370-#x037D] | [#x037F-#x1FFF]
-                          | [#x200C-#x200D] | [#x2070-#x218F] | [#x2C00-#x2FEF]
-                          | [#x3001-#xD7FF] | [#xF900-#xFDCF] | [#xFDF0-#xFFFD]
-                          | [#x10000-#xEFFFF]
-[165]    PN_CHARS_U     ::= PN_CHARS_BASE | '_'
-[166]    VARNAME        ::= ( PN_CHARS_U | [0-9] )
-                            ( PN_CHARS_U | [0-9] | #x00B7 | [#x0300-#x036F]
-                            | [#x203F-#x2040] )*
-}|
-}
-
 @defproc[#:kind "predicate"
          (pattern-component?
           [val any/c])
@@ -1693,26 +1855,37 @@ TBD
           [name ncname?])
          pattern-component?]{
 TBD
+
+
+From @cite["SPARQL11QL"], section 19.8 @italic{Grammar}:
+
+@nested[#:style 'code-inset]{
+@verbatim|{
+[164]    PN_CHARS_BASE  ::= [A-Z] | [a-z] | [#x00C0-#x00D6] | [#x00D8-#x00F6]
+                          | [#x00F8-#x02FF] | [#x0370-#x037D] | [#x037F-#x1FFF]
+                          | [#x200C-#x200D] | [#x2070-#x218F] | [#x2C00-#x2FEF]
+                          | [#x3001-#xD7FF] | [#xF900-#xFDCF] | [#xFDF0-#xFFFD]
+                          | [#x10000-#xEFFFF]
+[165]    PN_CHARS_U     ::= PN_CHARS_BASE | '_'
+[166]    VARNAME        ::= ( PN_CHARS_U | [0-9] )
+                            ( PN_CHARS_U | [0-9] | #x00B7 | [#x0300-#x036F]
+                            | [#x203F-#x2040] )*
+}|
+}
 }
 
 @defproc[#:kind "predicate"
-         (ignore?
-          [val any/c])
-         boolean?]{
+         (ignore? [val any/c]) boolean?]{
 TBD
 }
 
 @defproc[#:kind "predicate"
-         (comparitor?
-          [val any/c])
-         boolean?]{
+         (comparitor? [val any/c]) boolean?]{
 TBD
 }
 
 @defproc[#:kind "predicate"
-         (variable?
-          [val any/c])
-         boolean?]{
+         (variable? [val any/c]) boolean?]{
 TBD
 }
 
@@ -1720,9 +1893,7 @@ TBD
 @subsection[]{Statement Pattern}
 
 @defproc[#:kind "predicate"
-         (statement-pattern?
-          [val any/c])
-         boolean?]{
+         (statement-pattern? [val any/c]) boolean?]{
 TBD
 }
 
@@ -1755,23 +1926,17 @@ TBD
 @;{----------------------------------------------------------------------------}
 
 @defproc[#:kind "predicate"
-         (result-variable-value?
-          [val any/c])
-         boolean?]{
+         (result-variable-value? [val any/c]) boolean?]{
 TBD
 }
 
 @defproc[#:kind "predicate"
-         (result-statement?
-          [val any/c])
-         boolean?]{
+         (result-statement? [val any/c]) boolean?]{
 TBD
 }
 
 @defproc[#:kind "predicate"
-         (results?
-          [val any/c])
-         boolean?]{
+         (results? [val any/c]) boolean?]{
 TBD
 }
 
@@ -1969,18 +2134,53 @@ TBD
 The @tt{prelude} package combines imports and re-exports the most commonly used structures and procedures in the full
 library.
 
+From package @racket[rdf/core/name]:
+
+@nested[#:style 'inset]{
+  @itemlist[
+    #:style compact-list
+    @item{@racket[local-name?]}
+    @item{@racket[string->local-name]}
+    @item{@racket[local-name->string]}
+  ]
+}
+
 From package @racket[rdf/core/namespace]:
 
 @nested[#:style 'inset]{
   @itemlist[
     #:style compact-list
-    @item{@racket[ncname?]}
-    @item{@racket[string->ncname]}
-    @item{@racket[symbol->ncname]}
-    @item{@racket[make-namespace]}
     @item{@racket[namespace?]}
-    @item{@racket[make-name]}
-    @item{@racket[name?]}
+    @item{@racket[url->namespace]}
+    @item{@racket[namespace->url]}
+    @item{@racket[nsname?]}
+    @item{@racket[nsname]}
+    @item{@racket[make-nsname]}
+    @item{@racket[nsname->url]}
+  ]
+}
+
+From package @racket[rdf/core/nsmap]:
+
+@nested[#:style 'inset]{
+  @itemlist[
+    #:style compact-list
+    @item{@racket[prefix?]}
+    @item{@racket[string->prefix]}
+    @item{@racket[empty-prefix]}
+    @item{@racket[prefix->string]}
+    @item{@racket[prefixed-name?]}
+    @item{@racket[prefixed-name]}
+    @item{@racket[string->prefixed-name]}
+    @item{@racket[prefixed-name->string]}
+    @item{@racket[nsmap?]}
+    @item{@racket[nsmap-empty?]}
+    @item{@racket[make-nsmap]}
+    @item{@racket[nsmap-has-prefix?]}
+    @item{@racket[nsmap-has-default?]}
+    @item{@racket[nsmap-ref]}
+    @item{@racket[nsmap-ref-default]}
+    @item{@racket[nsmap-set!]}
   ]
 }
 
@@ -1996,7 +2196,6 @@ From package @racket[rdf/core/literal]:
     @item{@racket[make-untyped-literal]}
     @item{@racket[make-typed-literal]}
     @item{@racket[make-lang-string-literal]}
-    @item{@racket[write-ntriple-literal]}
   ]
 }
 
@@ -2025,8 +2224,6 @@ From package @racket[rdf/core/triple]:
     @item{@racket[make-triple]}
     @item{@racket[triple?]}
     @item{@racket[subject?]}
-    @item{@racket[write-ntriple-statement]}
-    @item{@racket[write-nquad-statement]}
   ]
 }
 
@@ -2035,9 +2232,9 @@ From package @racket[rdf/core/graph]:
 @nested[#:style 'inset]{
   @itemlist[
     #:style compact-list
-    @item{@racket[make-default-graph]}
-    @item{@racket[make-named-graph]}
     @item{@racket[graph?]}
+    @item{@racket[unnamed-graph]}
+    @item{@racket[named-graph]}
     @item{@racket[graph-named?]}
     @item{@racket[graph-empty?]}
     @item{@racket[graph-member?]}
@@ -2045,8 +2242,18 @@ From package @racket[rdf/core/graph]:
     @item{@racket[graph-add-all]}
     @item{@racket[graph-remove]}
     @item{@racket[graph-remove-all]}
-    @item{@racket[write-ntriple-graph]}
-    @item{@racket[write-nquad-graph]}
+  ]
+}
+
+From package @racket[rdf/core/quad]:
+
+@nested[#:style 'inset]{
+  @itemlist[
+    #:style compact-list
+    @item{@racket[quad?]}
+    @item{@racket[quad?]}
+    @item{@racket[statement->quad]}
+    @item{@racket[graph->quads]}
   ]
 }
 
@@ -2055,8 +2262,9 @@ From package @racket[rdf/core/dataset]:
 @nested[#:style 'inset]{
   @itemlist[
     #:style compact-list
-    @item{@racket[make-dataset]}
     @item{@racket[dataset?]}
+    @item{@racket[unnamed-dataset]}
+    @item{@racket[named-dataset]}
     @item{@racket[dataset-empty?]}
     @item{@racket[dataset-has-named?]}
     @item{@racket[dataset-has-default?]}
@@ -2064,6 +2272,19 @@ From package @racket[rdf/core/dataset]:
     @item{@racket[dataset-ref-default]}
     @item{@racket[dataset-set!]}
     @item{@racket[dataset-remove!]}
+  ]
+}
+
+From package @racket[rdf/core/io]:
+
+@nested[#:style 'inset]{
+  @itemlist[
+    #:style compact-list
+    @item{@racket[write-ntriple-literal]}
+    @item{@racket[write-ntriple-statement]}
+    @item{@racket[write-ntriple-graph]}
+    @item{@racket[write-nquad-statement]}
+    @item{@racket[write-nquad-graph]}
   ]
 }
 
@@ -2095,29 +2316,29 @@ creation of modules for other vocabularies.
 
 @subsubsection[#:style '(non-toc)]{RDF Datatypes}
 
-@defthing[lang-String name?]{The @racket[name] structure corresponding to the property @tt{rdf:langString}.}
+@defthing[lang-String nsname?]{The @racket[nsname?] structure corresponding to the property @tt{rdf:langString}.}
 
 @subsubsection[#:style '(non-toc)]{RDF Classes}
 
-@defthing[Alt name?]{The @racket[name] structure corresponding to the class @tt{rdf:Alt}.}
-@defthing[Bag name?]{The @racket[name] structure corresponding to the class @tt{rdf:Bag}.}
-@defthing[HTML name?]{The @racket[name] structure corresponding to the class @tt{rdf:HTML}.}
-@defthing[List name?]{The @racket[name] structure corresponding to the class @tt{rdf:List}.}
-@defthing[Property name?]{The @racket[name] structure corresponding to the class @tt{rdf:Property}.}
-@defthing[Seq name?]{The @racket[name] structure corresponding to the class @tt{rdf:Seq}.}
-@defthing[Statement name?]{The @racket[name] structure corresponding to the class @tt{rdf:Statement}.}
-@defthing[XMLLiteral name?]{The @racket[name] structure corresponding to the class @tt{rdf:XMLLiteral}.}
+@defthing[Alt nsname?]{The @racket[nsname?] structure corresponding to the class @tt{rdf:Alt}.}
+@defthing[Bag nsname?]{The @racket[nsname?] structure corresponding to the class @tt{rdf:Bag}.}
+@defthing[HTML nsname?]{The @racket[nsname?] structure corresponding to the class @tt{rdf:HTML}.}
+@defthing[List nsname?]{The @racket[nsname?] structure corresponding to the class @tt{rdf:List}.}
+@defthing[Property nsname?]{The @racket[nsname?] structure corresponding to the class @tt{rdf:Property}.}
+@defthing[Seq nsname?]{The @racket[nsname?] structure corresponding to the class @tt{rdf:Seq}.}
+@defthing[Statement nsname?]{The @racket[nsname?] structure corresponding to the class @tt{rdf:Statement}.}
+@defthing[XMLLiteral nsname?]{The @racket[nsname?] structure corresponding to the class @tt{rdf:XMLLiteral}.}
 
 @subsubsection[#:style '(non-toc)]{RDF Properties}
 
-@defthing[first name?]{The @racket[name] structure corresponding to the property @tt{rdf:first}.}
-@defthing[nil name?]{The @racket[name] structure corresponding to the property @tt{rdf:nil}.}
-@defthing[object name?]{The @racket[name] structure corresponding to the property @tt{rdf:object}.}
-@defthing[predicate name?]{The @racket[name] structure corresponding to the property @tt{rdf:predicate}.}
-@defthing[rest name?]{The @racket[name] structure corresponding to the property @tt{rdf:rest}.}
-@defthing[subject name?]{The @racket[name] structure corresponding to the property @tt{rdf:subject}.}
-@defthing[type name?]{The @racket[name] structure corresponding to the property @tt{rdf:type}.}
-@defthing[value name?]{The @racket[name] structure corresponding to the property @tt{rdf:value}.}
+@defthing[first nsname?]{The @racket[nsname?] structure corresponding to the property @tt{rdf:first}.}
+@defthing[nil nsname?]{The @racket[nsname?] structure corresponding to the property @tt{rdf:nil}.}
+@defthing[object nsname?]{The @racket[nsname?] structure corresponding to the property @tt{rdf:object}.}
+@defthing[predicate nsname?]{The @racket[nsname?] structure corresponding to the property @tt{rdf:predicate}.}
+@defthing[rest nsname?]{The @racket[nsname?] structure corresponding to the property @tt{rdf:rest}.}
+@defthing[subject nsname?]{The @racket[nsname?] structure corresponding to the property @tt{rdf:subject}.}
+@defthing[type nsname?]{The @racket[nsname?] structure corresponding to the property @tt{rdf:type}.}
+@defthing[value nsname?]{The @racket[nsname?] structure corresponding to the property @tt{rdf:value}.}
 
 @;{============================================================================}
 @subsection[]{RDF Schema}
@@ -2127,24 +2348,24 @@ creation of modules for other vocabularies.
 
 @subsubsection[#:style '(non-toc)]{RDFS Classes}
 
-@defthing[rdfs:Class name?]{The @racket[name] structure corresponding to the class @tt{:Class}.}
-@defthing[rdfs:Container name?]{The @racket[name] structure corresponding to the class @tt{:Container}.}
-@defthing[rdfs:Container-Membership-Property name?]{The @racket[name] structure corresponding to the class @tt{:Container-Membership-Property}.}
-@defthing[rdfs:Datatype name?]{The @racket[name] structure corresponding to the class @tt{:Datatype}.}
-@defthing[rdfs:Literal name?]{The @racket[name] structure corresponding to the class @tt{:Literal}.}
-@defthing[rdfs:Resource name?]{The @racket[name] structure corresponding to the class @tt{:Resource}.}
+@defthing[rdfs:Class nsname?]{The @racket[nsname?] structure corresponding to the class @tt{:Class}.}
+@defthing[rdfs:Container nsname?]{The @racket[nsname?] structure corresponding to the class @tt{:Container}.}
+@defthing[rdfs:Container-Membership-Property nsname?]{The @racket[nsname?] structure corresponding to the class @tt{:Container-Membership-Property}.}
+@defthing[rdfs:Datatype nsname?]{The @racket[nsname?] structure corresponding to the class @tt{:Datatype}.}
+@defthing[rdfs:Literal nsname?]{The @racket[nsname?] structure corresponding to the class @tt{:Literal}.}
+@defthing[rdfs:Resource nsname?]{The @racket[nsname?] structure corresponding to the class @tt{:Resource}.}
 
 @subsubsection[#:style '(non-toc)]{RDFS Properties}
 
-@defthing[rdfs:comment name?]{The @racket[name] structure corresponding to the property @tt{:comment}.}
-@defthing[rdfs:domain name?]{The @racket[name] structure corresponding to the property @tt{:domain}.}
-@defthing[rdfs:is-defined-by name?]{The @racket[name] structure corresponding to the property @tt{:isDefinedBy}.}
-@defthing[rdfs:label name?]{The @racket[name] structure corresponding to the property @tt{:label}.}
-@defthing[rdfs:member name?]{The @racket[name] structure corresponding to the property @tt{:member}.}
-@defthing[rdfs:range name?]{The @racket[name] structure corresponding to the property @tt{:range}.}
-@defthing[rdfs:see-also name?]{The @racket[name] structure corresponding to the property @tt{:seeAlso}.}
-@defthing[rdfs:sub-class-of name?]{The @racket[name] structure corresponding to the property @tt{:sub-Class-Of}.}
-@defthing[rdfs:sub-property-of name?]{The @racket[name] structure corresponding to the property @tt{:sub-Property-Of}.}
+@defthing[rdfs:comment nsname?]{The @racket[nsname?] structure corresponding to the property @tt{:comment}.}
+@defthing[rdfs:domain nsname?]{The @racket[nsname?] structure corresponding to the property @tt{:domain}.}
+@defthing[rdfs:is-defined-by nsname?]{The @racket[nsname?] structure corresponding to the property @tt{:isDefinedBy}.}
+@defthing[rdfs:label nsname?]{The @racket[nsname?] structure corresponding to the property @tt{:label}.}
+@defthing[rdfs:member nsname?]{The @racket[nsname?] structure corresponding to the property @tt{:member}.}
+@defthing[rdfs:range nsname?]{The @racket[nsname?] structure corresponding to the property @tt{:range}.}
+@defthing[rdfs:see-also nsname?]{The @racket[nsname?] structure corresponding to the property @tt{:seeAlso}.}
+@defthing[rdfs:sub-class-of nsname?]{The @racket[nsname?] structure corresponding to the property @tt{:sub-Class-Of}.}
+@defthing[rdfs:sub-property-of nsname?]{The @racket[nsname?] structure corresponding to the property @tt{:sub-Property-Of}.}
 
 @;{============================================================================}
 @subsection[]{XML}
@@ -2154,9 +2375,9 @@ creation of modules for other vocabularies.
 
 @subsubsection[#:style '(non-toc)]{XML Properties}
 
-@defthing[xml:base name?]{The @racket[name] structure corresponding to the property @tt{xml:base}.}
-@defthing[xml:lang name?]{The @racket[name] structure corresponding to the property @tt{xml:lang}.}
-@defthing[xml:space name?]{The @racket[name] structure corresponding to the property @tt{xml:space}.}
+@defthing[xml:base nsname?]{The @racket[nsname?] structure corresponding to the property @tt{xml:base}.}
+@defthing[xml:lang nsname?]{The @racket[nsname?] structure corresponding to the property @tt{xml:lang}.}
+@defthing[xml:space nsname?]{The @racket[nsname?] structure corresponding to the property @tt{xml:space}.}
 
 @;{============================================================================}
 @subsection[]{XML Schema Datatypes}
@@ -2166,67 +2387,67 @@ creation of modules for other vocabularies.
 
 @subsubsection[#:style '(non-toc)]{XSD Classes}
 
-@defthing[xsd:any-type name?]{The @racket[name] structure corresponding to the type @tt{xsd:anyType}.}
+@defthing[xsd:any-type nsname?]{The @racket[nsname?] structure corresponding to the type @tt{xsd:anyType}.}
 
 @subsubsection[#:style '(non-toc)]{XSD Datatypes}
 
-@defthing[xsd:any-simple-type name?]{The @racket[name] structure corresponding to the type @tt{xsd:anySimpleType}.}
-@defthing[xsd:any-uri name?]{The @racket[name] structure corresponding to the datatype @tt{xsd:anyURI}.}
-@defthing[xsd:base64-binary name?]{The @racket[name] structure corresponding to the datatype @tt{xsd:base64Binary}.}
-@defthing[xsd:boolean name?]{The @racket[name] structure corresponding to the datatype @tt{xsd:boolean}.}
-@defthing[xsd:byte name?]{The @racket[name] structure corresponding to the datatype @tt{xsd:byte}.}
-@defthing[xsd:date name?]{The @racket[name] structure corresponding to the datatype @tt{xsd:date}.}
-@defthing[xsd:date-time name?]{The @racket[name] structure corresponding to the datatype @tt{xsd:dateTime}.}
-@defthing[xsd:decimal name?]{The @racket[name] structure corresponding to the datatype @tt{xsd:decimal}.}
-@defthing[xsd:double name?]{The @racket[name] structure corresponding to the datatype @tt{xsd:double}.}
-@defthing[xsd:duration name?]{The @racket[name] structure corresponding to the datatype @tt{xsd:duration}.}
-@defthing[xsd:entity name?]{The @racket[name] structure corresponding to the datatype @tt{xsd:ENTITY}.}
-@defthing[xsd:float name?]{The @racket[name] structure corresponding to the datatype @tt{xsd:float}.}
-@defthing[xsd:g-day name?]{The @racket[name] structure corresponding to the datatype @tt{xsd:gDay}.}
-@defthing[xsd:g-month name?]{The @racket[name] structure corresponding to the datatype @tt{xsd:gMonth}.}
-@defthing[xsd:g-month-day name?]{The @racket[name] structure corresponding to the datatype @tt{xsd:gMonthDay}.}
-@defthing[xsd:g-year name?]{The @racket[name] structure corresponding to the datatype @tt{xsd:gYear}.}
-@defthing[xsd:g-year-month name?]{The @racket[name] structure corresponding to the datatype @tt{xsd:gYearMonth}.}
-@defthing[xsd:hex-binary name?]{The @racket[name] structure corresponding to the datatype @tt{xsd:hexBinary}.}
-@defthing[xsd:id name?]{The @racket[name] structure corresponding to the datatype @tt{xsd:ID}.}
-@defthing[xsd:id-ref name?]{The @racket[name] structure corresponding to the datatype @tt{xsd:IDREF}.}
-@defthing[xsd:int name?]{The @racket[name] structure corresponding to the datatype @tt{xsd:int}.}
-@defthing[xsd:integer name?]{The @racket[name] structure corresponding to the datatype @tt{xsd:integer}.}
-@defthing[xsd:language name?]{The @racket[name] structure corresponding to the datatype @tt{xsd:language}.}
-@defthing[xsd:long name?]{The @racket[name] structure corresponding to the datatype @tt{xsd:long}.}
-@defthing[xsd:name name?]{The @racket[name] structure corresponding to the datatype @tt{xsd:Name}.}
-@defthing[xsd:ncname name?]{The @racket[name] structure corresponding to the datatype @tt{xsd:NCNAME}.}
-@defthing[xsd:negative-integer name?]{The @racket[name] structure corresponding to the datatype @tt{xsd:negativeInteger}.}
-@defthing[xsd:nmtoken name?]{The @racket[name] structure corresponding to the datatype @tt{xsd:NMTOKEN}.}
-@defthing[xsd:non-negative-integer name?]{The @racket[name] structure corresponding to the datatype @tt{xsd:nonNegativeInteger}.}
-@defthing[xsd:non-positive-integer name?]{The @racket[name] structure corresponding to the datatype @tt{xsd:nonPositiveInteger}.}
-@defthing[xsd:normalized-string name?]{The @racket[name] structure corresponding to the datatype @tt{xsd:normalizedString}.}
-@defthing[xsd:positive-integer name?]{The @racket[name] structure corresponding to the datatype @tt{xsd:positiveInteger}.}
-@defthing[xsd:q-name name?]{The @racket[name] structure corresponding to the datatype @tt{xsd:QName}.}
-@defthing[xsd:q-notation name?]{The @racket[name] structure corresponding to the datatype @tt{xsd:QNotation}.}
-@defthing[xsd:short name?]{The @racket[name] structure corresponding to the datatype @tt{xsd:short}.}
-@defthing[xsd:string name?]{The @racket[name] structure corresponding to the datatype @tt{xsd:string}.}
-@defthing[xsd:time name?]{The @racket[name] structure corresponding to the datatype @tt{xsd:time}.}
-@defthing[xsd:token name?]{The @racket[name] structure corresponding to the datatype @tt{xsd:token}.}
-@defthing[xsd:unsigned-byte name?]{The @racket[name] structure corresponding to the datatype @tt{xsd:unsignedByte}.}
-@defthing[xsd:unsigned-int name?]{The @racket[name] structure corresponding to the datatype @tt{xsd:unsignedInt}.}
-@defthing[xsd:unsigned-long name?]{The @racket[name] structure corresponding to the datatype @tt{xsd:unsignedLong}.}
-@defthing[xsd:unsigned-short name?]{The @racket[name] structure corresponding to the datatype @tt{xsd:unsignedShort}.}
+@defthing[xsd:any-simple-type nsname?]{The @racket[nsname?] structure corresponding to the type @tt{xsd:anySimpleType}.}
+@defthing[xsd:any-uri nsname?]{The @racket[nsname?] structure corresponding to the datatype @tt{xsd:anyURI}.}
+@defthing[xsd:base64-binary nsname?]{The @racket[nsname?] structure corresponding to the datatype @tt{xsd:base64Binary}.}
+@defthing[xsd:boolean nsname?]{The @racket[nsname?] structure corresponding to the datatype @tt{xsd:boolean}.}
+@defthing[xsd:byte nsname?]{The @racket[nsname?] structure corresponding to the datatype @tt{xsd:byte}.}
+@defthing[xsd:date nsname?]{The @racket[nsname?] structure corresponding to the datatype @tt{xsd:date}.}
+@defthing[xsd:date-time nsname?]{The @racket[nsname?] structure corresponding to the datatype @tt{xsd:dateTime}.}
+@defthing[xsd:decimal nsname?]{The @racket[nsname?] structure corresponding to the datatype @tt{xsd:decimal}.}
+@defthing[xsd:double nsname?]{The @racket[nsname?] structure corresponding to the datatype @tt{xsd:double}.}
+@defthing[xsd:duration nsname?]{The @racket[nsname?] structure corresponding to the datatype @tt{xsd:duration}.}
+@defthing[xsd:entity nsname?]{The @racket[nsname?] structure corresponding to the datatype @tt{xsd:ENTITY}.}
+@defthing[xsd:float nsname?]{The @racket[nsname?] structure corresponding to the datatype @tt{xsd:float}.}
+@defthing[xsd:g-day nsname?]{The @racket[nsname?] structure corresponding to the datatype @tt{xsd:gDay}.}
+@defthing[xsd:g-month nsname?]{The @racket[nsname?] structure corresponding to the datatype @tt{xsd:gMonth}.}
+@defthing[xsd:g-month-day nsname?]{The @racket[nsname?] structure corresponding to the datatype @tt{xsd:gMonthDay}.}
+@defthing[xsd:g-year nsname?]{The @racket[nsname?] structure corresponding to the datatype @tt{xsd:gYear}.}
+@defthing[xsd:g-year-month nsname?]{The @racket[nsname?] structure corresponding to the datatype @tt{xsd:gYearMonth}.}
+@defthing[xsd:hex-binary nsname?]{The @racket[nsname?] structure corresponding to the datatype @tt{xsd:hexBinary}.}
+@defthing[xsd:id nsname?]{The @racket[nsname?] structure corresponding to the datatype @tt{xsd:ID}.}
+@defthing[xsd:id-ref nsname?]{The @racket[nsname?] structure corresponding to the datatype @tt{xsd:IDREF}.}
+@defthing[xsd:int nsname?]{The @racket[nsname?] structure corresponding to the datatype @tt{xsd:int}.}
+@defthing[xsd:integer nsname?]{The @racket[nsname?] structure corresponding to the datatype @tt{xsd:integer}.}
+@defthing[xsd:language nsname?]{The @racket[nsname?] structure corresponding to the datatype @tt{xsd:language}.}
+@defthing[xsd:long nsname?]{The @racket[nsname?] structure corresponding to the datatype @tt{xsd:long}.}
+@defthing[xsd:name nsname?]{The @racket[nsname?] structure corresponding to the datatype @tt{xsd:Name}.}
+@defthing[xsd:ncname nsname?]{The @racket[nsname?] structure corresponding to the datatype @tt{xsd:NCNAME}.}
+@defthing[xsd:negative-integer nsname?]{The @racket[nsname?] structure corresponding to the datatype @tt{xsd:negativeInteger}.}
+@defthing[xsd:nmtoken nsname?]{The @racket[nsname?] structure corresponding to the datatype @tt{xsd:NMTOKEN}.}
+@defthing[xsd:non-negative-integer nsname?]{The @racket[nsname?] structure corresponding to the datatype @tt{xsd:nonNegativeInteger}.}
+@defthing[xsd:non-positive-integer nsname?]{The @racket[nsname?] structure corresponding to the datatype @tt{xsd:nonPositiveInteger}.}
+@defthing[xsd:normalized-string nsname?]{The @racket[nsname?] structure corresponding to the datatype @tt{xsd:normalizedString}.}
+@defthing[xsd:positive-integer nsname?]{The @racket[nsname?] structure corresponding to the datatype @tt{xsd:positiveInteger}.}
+@defthing[xsd:q-name nsname?]{The @racket[nsname?] structure corresponding to the datatype @tt{xsd:QName}.}
+@defthing[xsd:q-notation nsname?]{The @racket[nsname?] structure corresponding to the datatype @tt{xsd:QNotation}.}
+@defthing[xsd:short nsname?]{The @racket[nsname?] structure corresponding to the datatype @tt{xsd:short}.}
+@defthing[xsd:string nsname?]{The @racket[nsname?] structure corresponding to the datatype @tt{xsd:string}.}
+@defthing[xsd:time nsname?]{The @racket[nsname?] structure corresponding to the datatype @tt{xsd:time}.}
+@defthing[xsd:token nsname?]{The @racket[nsname?] structure corresponding to the datatype @tt{xsd:token}.}
+@defthing[xsd:unsigned-byte nsname?]{The @racket[nsname?] structure corresponding to the datatype @tt{xsd:unsignedByte}.}
+@defthing[xsd:unsigned-int nsname?]{The @racket[nsname?] structure corresponding to the datatype @tt{xsd:unsignedInt}.}
+@defthing[xsd:unsigned-long nsname?]{The @racket[nsname?] structure corresponding to the datatype @tt{xsd:unsignedLong}.}
+@defthing[xsd:unsigned-short nsname?]{The @racket[nsname?] structure corresponding to the datatype @tt{xsd:unsignedShort}.}
 
 @subsubsection[#:style '(non-toc)]{XSD Properties}
 
-@defthing[xsd:enumeration name?]{The @racket[name] structure corresponding to the property @tt{xsd:enumeration}.}
-@defthing[xsd:fraction-digits name?]{The @racket[name] structure corresponding to the property @tt{xsd:fractionDigits}.}
-@defthing[xsd:length name?]{The @racket[name] structure corresponding to the property @tt{xsd:length}.}
-@defthing[xsd:max-exclusive name?]{The @racket[name] structure corresponding to the property @tt{xsd:maxExclusive}.}
-@defthing[xsd:max-inclusive name?]{The @racket[name] structure corresponding to the property @tt{xsd:maxInclusive}.}
-@defthing[xsd:max-length name?]{The @racket[name] structure corresponding to the property @tt{xsd:maxLength}.}
-@defthing[xsd:min-exclusive name?]{The @racket[name] structure corresponding to the property @tt{xsd:minExclusive}.}
-@defthing[xsd:min-inclusive name?]{The @racket[name] structure corresponding to the property @tt{xsd:minInclusive}.}
-@defthing[xsd:min-length name?]{The @racket[name] structure corresponding to the property @tt{xsd:minLength}.}
-@defthing[xsd:pattern name?]{The @racket[name] structure corresponding to the property @tt{xsd:pattern}.}
-@defthing[xsd:total-digits name?]{The @racket[name] structure corresponding to the property @tt{xsd:totalDigits}.}
-@defthing[xsd:white-space name?]{The @racket[name] structure corresponding to the property @tt{xsd:whiteSpace}.}
+@defthing[xsd:enumeration nsname?]{The @racket[nsname?] structure corresponding to the property @tt{xsd:enumeration}.}
+@defthing[xsd:fraction-digits nsname?]{The @racket[nsname?] structure corresponding to the property @tt{xsd:fractionDigits}.}
+@defthing[xsd:length nsname?]{The @racket[nsname?] structure corresponding to the property @tt{xsd:length}.}
+@defthing[xsd:max-exclusive nsname?]{The @racket[nsname?] structure corresponding to the property @tt{xsd:maxExclusive}.}
+@defthing[xsd:max-inclusive nsname?]{The @racket[nsname?] structure corresponding to the property @tt{xsd:maxInclusive}.}
+@defthing[xsd:max-length nsname?]{The @racket[nsname?] structure corresponding to the property @tt{xsd:maxLength}.}
+@defthing[xsd:min-exclusive nsname?]{The @racket[nsname?] structure corresponding to the property @tt{xsd:minExclusive}.}
+@defthing[xsd:min-inclusive nsname?]{The @racket[nsname?] structure corresponding to the property @tt{xsd:minInclusive}.}
+@defthing[xsd:min-length nsname?]{The @racket[nsname?] structure corresponding to the property @tt{xsd:minLength}.}
+@defthing[xsd:pattern nsname?]{The @racket[nsname?] structure corresponding to the property @tt{xsd:pattern}.}
+@defthing[xsd:total-digits nsname?]{The @racket[nsname?] structure corresponding to the property @tt{xsd:totalDigits}.}
+@defthing[xsd:white-space nsname?]{The @racket[nsname?] structure corresponding to the property @tt{xsd:whiteSpace}.}
 
 @;{============================================================================}
 @subsection[]{Vocabulary of Interlinked Datasets}
@@ -2236,40 +2457,40 @@ creation of modules for other vocabularies.
 
 @subsubsection[#:style '(non-toc)]{VOID Classes}
 
-@defthing[void:Dataset name?]{The @racket[name] structure corresponding to the class @tt{void:Dataset}. A set of RDF triples that are published, maintained or aggregated by a single provider.}
-@defthing[void:Dataset-Description name?]{The @racket[name] structure corresponding to the class @tt{void:DatasetDescription}. A web resource whose @tt{foaf:primaryTopic} or @tt{foaf:topics} include @racket[void:Dataset]s.}
-@defthing[void:Linkset name?]{The @racket[name] structure corresponding to the class @tt{void:Linkset}. 	A collection of RDF links between two @racket[void:Dataset]s.}
-@defthing[void:Technical-Feature name?]{The @racket[name] structure corresponding to the class @tt{void:TechnicalFeature}. A technical feature of a @racket[void:Dataset], such as a supported RDF serialization format.}
+@defthing[void:Dataset nsname?]{The @racket[nsname?] structure corresponding to the class @tt{void:Dataset}. A set of RDF triples that are published, maintained or aggregated by a single provider.}
+@defthing[void:Dataset-Description nsname?]{The @racket[nsname?] structure corresponding to the class @tt{void:DatasetDescription}. A web resource whose @tt{foaf:primaryTopic} or @tt{foaf:topics} include @racket[void:Dataset]s.}
+@defthing[void:Linkset nsname?]{The @racket[nsname?] structure corresponding to the class @tt{void:Linkset}. 	A collection of RDF links between two @racket[void:Dataset]s.}
+@defthing[void:Technical-Feature nsname?]{The @racket[nsname?] structure corresponding to the class @tt{void:TechnicalFeature}. A technical feature of a @racket[void:Dataset], such as a supported RDF serialization format.}
 
 @subsubsection[#:style '(non-toc)]{VOID Properties}
 
-@defthing[void:class name?]{The @racket[name] structure corresponding to the property @tt{void:class}. The @racket[rdfs:Class] that is the @racket[rdf:type] of all entities in a class-based partition.}
-@defthing[void:class-partition name?]{The @racket[name] structure corresponding to the property @tt{void:classPartition}. A subset of a @racket[void:Dataset] that contains only the entities of a certain @racket[rdfs:Class].}
-@defthing[void:classes name?]{The @racket[name] structure corresponding to the property @tt{void:classes}. The total number of distinct classes in a @racket[void:Dataset].}
-@defthing[void:data-dump name?]{The @racket[name] structure corresponding to the property @tt{void:dataDump}. An RDF dump, partial or complete, of a @racket[void:Dataset].}
-@defthing[void:distinct-objects name?]{The @racket[name] structure corresponding to the property @tt{void:distinctObjects}. The total number of distinct objects in a @racket[void:Dataset].}
-@defthing[void:distinct-subjects name?]{The @racket[name] structure corresponding to the property @tt{void:distinctSubjects}. The total number of distinct subjects in a @racket[void:Dataset].}
-@defthing[void:documents name?]{The @racket[name] structure corresponding to the property @tt{void:documents}. The total number of documents, for @racket[void:Dataset]s that are published as a set of individual RDF documents.}
-@defthing[void:entities name?]{The @racket[name] structure corresponding to the property @tt{void:entities}. The total number of entities that are described in a @racket[void:Dataset].}
-@defthing[void:example-resource name?]{The @racket[name] structure corresponding to the property @tt{void:exampleResource}. An example entity that is representative for the entities described in a @racket[void:Dataset].}
-@defthing[void:feature name?]{The @racket[name] structure corresponding to the property @tt{void:feature}. A @racket[void:TechnicalFeature] supported by a @racket[void:Datset].}
-@defthing[void:in-dataset name?]{The @racket[name] structure corresponding to the property @tt{void:inDataset}. Points to the @racket[void:Dataset] that a document is a part of.}
-@defthing[void:link-predicate name?]{The @racket[name] structure corresponding to the property @tt{void:linkPredicate}. Specifies the RDF property of the triples in a @racket[void:Linkset].}
-@defthing[void:objects-target name?]{The @racket[name] structure corresponding to the property @tt{void:objectsTarget}. The @racket[void:Dataset] that contains the resources in the object position of a @racket[void:Linkset]'s triples.}
-@defthing[void:opensearch-description name?]{The @racket[name] structure corresponding to the property @tt{void:openSearchDescription}. An OpenSearch description document for a free-text search service over a @racket[void:Dataset].}
-@defthing[void:properties name?]{The @racket[name] structure corresponding to the property @tt{void:properties}. The total number of distinct properties in a @racket[void:Dataset].}
-@defthing[void:property name?]{The @racket[name] structure corresponding to the property @tt{void:property}. The @racket[rdf:Property] that is the predicate of all triples in a property-based partition.}
-@defthing[void:property-partition name?]{The @racket[name] structure corresponding to the property @tt{void:propertyPartition}. A subset of a @racket[void:Dataset] that contains only the triples of a certain @racket[rdf:Property].}
-@defthing[void:root-resource name?]{The @racket[name] structure corresponding to the property @tt{void:rootResource}. A top concept or entry point for a @racket[void:Dataset] that is structured in a tree-like fashion.}
-@defthing[void:sparql-endpoint name?]{The @racket[name] structure corresponding to the property @tt{void:sparqlEndpoint}. A SPARQL protocol endpoint that allows SPARQL query access to a @racket[void:Dataset].}
-@defthing[void:subjects-target name?]{The @racket[name] structure corresponding to the property @tt{void:subjectsTarget}. The @racket[void:Dataset] that contains the resources in the subject position of this @racket[void:Linkset]'s triples.}
-@defthing[void:subset name?]{The @racket[name] structure corresponding to the property @tt{void:subset}. A @racket[void:Dataset] that is part of another @racket[void:Dataset].}
-@defthing[void:target name?]{The @racket[name] structure corresponding to the property @tt{void:target}. One of the two @racket[void:Datasets] connected by this @racket[void:Linkset].}
-@defthing[void:triples name?]{The @racket[name] structure corresponding to the property @tt{void:triples}. The total number of triples contained in a @racket[void:Dataset].}
-@defthing[void:uri-lookup-endpoint name?]{The @racket[name] structure corresponding to the property @tt{void:uriLookupEndpoint}. A protocol endpoint for simple URI lookups for a @racket[void:Dataset].}
-@defthing[void:uri-regex-pattern name?]{The @racket[name] structure corresponding to the property @tt{void:uriRegexPattern}. A regular expression that matches the URIs of a @racket[void:Dataset]'s entities.}
-@defthing[void:uri-space name?]{The @racket[name] structure corresponding to the property @tt{void:uriSpace}. A URI that is a common string prefix of all the entity URIs in a @racket[void:Datset].}
-@defthing[void:vocabulary name?]{The @racket[name] structure corresponding to the property @tt{void:vocabulary}. A vocabulary or @racket[owl:Ontology] whose classes or properties are used in a @racket[void:Dataset].}
+@defthing[void:class nsname?]{The @racket[nsname?] structure corresponding to the property @tt{void:class}. The @racket[rdfs:Class] that is the @racket[rdf:type] of all entities in a class-based partition.}
+@defthing[void:class-partition nsname?]{The @racket[local-ame] structure corresponding to the property @tt{void:classPartition}. A subset of a @racket[void:Dataset] that contains only the entities of a certain @racket[rdfs:Class].}
+@defthing[void:classes nlocal-ame?]{The @racket[nsname?] structure corresponding to the property @tt{void:classes}. The total number of distinct classes in a @racket[void:Dataset].}
+@defthing[void:data-dump nsname?]{The @racket[nsname?] structure corresponding to the property @tt{void:dataDump}. An RDF dump, partial or complete, of a @racket[void:Dataset].}
+@defthing[void:distinct-objects nsname?]{The @racket[nsname?] structure corresponding to the property @tt{void:distinctObjects}. The total number of distinct objects in a @racket[void:Dataset].}
+@defthing[void:distinct-subjects nsname?]{The @racket[nsname?] structure corresponding to the property @tt{void:distinctSubjects}. The total number of distinct subjects in a @racket[void:Dataset].}
+@defthing[void:documents nsname?]{The @racket[nsname?] structure corresponding to the property @tt{void:documents}. The total number of documents, for @racket[void:Dataset]s that are published as a set of individual RDF documents.}
+@defthing[void:entities nsname?]{The @racket[nsname?] structure corresponding to the property @tt{void:entities}. The total number of entities that are described in a @racket[void:Dataset].}
+@defthing[void:example-resource nsname?]{The @racket[nsname?] structure corresponding to the property @tt{void:exampleResource}. An example entity that is representative for the entities described in a @racket[void:Dataset].}
+@defthing[void:feature nsname?]{The @racket[nsname?] structure corresponding to the property @tt{void:feature}. A @racket[void:TechnicalFeature] supported by a @racket[void:Datset].}
+@defthing[void:in-dataset nsname?]{The @racket[nsname?] structure corresponding to the property @tt{void:inDataset}. Points to the @racket[void:Dataset] that a document is a part of.}
+@defthing[void:link-predicate nsname?]{The @racket[nsname?] structure corresponding to the property @tt{void:linkPredicate}. Specifies the RDF property of the triples in a @racket[void:Linkset].}
+@defthing[void:objects-target nsname?]{The @racket[nsname?] structure corresponding to the property @tt{void:objectsTarget}. The @racket[void:Dataset] that contains the resources in the object position of a @racket[void:Linkset]'s triples.}
+@defthing[void:opensearch-description nsname?]{The @racket[nsname?] structure corresponding to the property @tt{void:openSearchDescription}. An OpenSearch description document for a free-text search service over a @racket[void:Dataset].}
+@defthing[void:properties nsname?]{The @racket[nsname?] structure corresponding to the property @tt{void:properties}. The total number of distinct properties in a @racket[void:Dataset].}
+@defthing[void:property nsname?]{The @racket[nsname?] structure corresponding to the property @tt{void:property}. The @racket[rdf:Property] that is the predicate of all triples in a property-based partition.}
+@defthing[void:property-partition nsname?]{The @racket[nsname?] structure corresponding to the property @tt{void:propertyPartition}. A subset of a @racket[void:Dataset] that contains only the triples of a certain @racket[rdf:Property].}
+@defthing[void:root-resource nsname?]{The @racket[nsname?] structure corresponding to the property @tt{void:rootResource}. A top concept or entry point for a @racket[void:Dataset] that is structured in a tree-like fashion.}
+@defthing[void:sparql-endpoint nsname?]{The @racket[nsname?] structure corresponding to the property @tt{void:sparqlEndpoint}. A SPARQL protocol endpoint that allows SPARQL query access to a @racket[void:Dataset].}
+@defthing[void:subjects-target nsname?]{The @racket[nsname?] structure corresponding to the property @tt{void:subjectsTarget}. The @racket[void:Dataset] that contains the resources in the subject position of this @racket[void:Linkset]'s triples.}
+@defthing[void:subset nsname?]{The @racket[nsname?] structure corresponding to the property @tt{void:subset}. A @racket[void:Dataset] that is part of another @racket[void:Dataset].}
+@defthing[void:target nsname?]{The @racket[nsname?] structure corresponding to the property @tt{void:target}. One of the two @racket[void:Datasets] connected by this @racket[void:Linkset].}
+@defthing[void:triples nsname?]{The @racket[nsname?] structure corresponding to the property @tt{void:triples}. The total number of triples contained in a @racket[void:Dataset].}
+@defthing[void:uri-lookup-endpoint nsname?]{The @racket[nsname?] structure corresponding to the property @tt{void:uriLookupEndpoint}. A protocol endpoint for simple URI lookups for a @racket[void:Dataset].}
+@defthing[void:uri-regex-pattern nsname?]{The @racket[nsname?] structure corresponding to the property @tt{void:uriRegexPattern}. A regular expression that matches the URIs of a @racket[void:Dataset]'s entities.}
+@defthing[void:uri-space nsname?]{The @racket[nsname?] structure corresponding to the property @tt{void:uriSpace}. A URI that is a common string prefix of all the entity URIs in a @racket[void:Datset].}
+@defthing[void:vocabulary nsname?]{The @racket[nsname?] structure corresponding to the property @tt{void:vocabulary}. A vocabulary or @racket[owl:Ontology] whose classes or properties are used in a @racket[void:Dataset].}
 
 
 @;{============================================================================}
@@ -2280,18 +2501,18 @@ creation of modules for other vocabularies.
 
 @subsubsection[#:style '(non-toc)]{SD Classes}
 
-@defthing[sd:Dataset name?]{The @racket[name] structure corresponding to the class @tt{sd:Dataset}.}
-@defthing[sd:Graph name?]{The @racket[name] structure corresponding to the class @tt{sd:Graph}.}
-@defthing[sd:GraphCollection name?]{The @racket[name] structure corresponding to the class @tt{sd:GraphCollection}.}
-@defthing[sd:NamedGraph name?]{The @racket[name] structure corresponding to the class @tt{sd:NamedGraph}.}
+@defthing[sd:Dataset nsname?]{The @racket[nsname?] structure corresponding to the class @tt{sd:Dataset}.}
+@defthing[sd:Graph name?]{The @racket[nsname?] structure corresponding to the class @tt{sd:Graph}.}
+@defthing[sd:GraphCollection nsname?]{The @racket[nsname?] structure corresponding to the class @tt{sd:GraphCollection}.}
+@defthing[sd:NamedGraph nsname?]{The @racket[nsname?] structure corresponding to the class @tt{sd:NamedGraph}.}
 
 @subsubsection[#:style '(non-toc)]{SD Properties}
 
-@defthing[sd:defaultDataset name?]{The @racket[name] structure corresponding to the property @tt{sd:defaultDataset}.}
-@defthing[sd:defaultGraph name?]{The @racket[name] structure corresponding to the property @tt{sd:defaultGraph}.}
-@defthing[sd:graph name?]{The @racket[name] structure corresponding to the property @tt{sd:graph}.}
-@defthing[sd:name name?]{The @racket[name] structure corresponding to the property @tt{sd:name}.}
-@defthing[sd:namedGraph name?]{@racket[name] name structure corresponding to the property @tt{sd:namedGraph}.}
+@defthing[sd:defaultDataset nsname?]{The @racket[nsname?] structure corresponding to the property @tt{sd:defaultDataset}.}
+@defthing[sd:defaultGraph nsname?]{The @racket[nsname?] structure corresponding to the property @tt{sd:defaultGraph}.}
+@defthing[sd:graph nsname?]{The @racket[nsname?] structure corresponding to the property @tt{sd:graph}.}
+@defthing[sd:name nsname?]{The @racket[nsname?] structure corresponding to the property @tt{sd:name}.}
+@defthing[sd:namedGraph nsname?]{@racket[nsname?] name structure corresponding to the property @tt{sd:namedGraph}.}
 
 
 @;{============================================================================}
@@ -2421,6 +2642,169 @@ added to the namespace.
 }|
 }
 
+
+@;{============================================================================}
+@;{============================================================================}
+@section[]{Appendix: Names Defined}
+
+Starting with the productions from @cite["SPARQL11QL"] section 19.8 @italic{Grammar}:
+
+@nested[#:style 'code-inset]{
+@verbatim|{
+[6]    PrefixDecl      ::= 'PREFIX' PNAME_NS IRIREF
+
+[136]  iri             ::= IRIREF | PrefixedName
+[137]  PrefixedName    ::= PNAME_LN | PNAME_NS
+
+[140]  PNAME_NS        ::= PN_PREFIX? ':'
+[141]  PNAME_LN        ::= PNAME_NS PN_LOCAL
+
+[164]  PN_CHARS_BASE   ::= [A-Z] | [a-z] | [#x00C0-#x00D6]
+                         | [#x00D8-#x00F6] | [#x00F8-#x02FF]
+                         | [#x0370-#x037D] | [#x037F-#x1FFF]
+                         | [#x200C-#x200D] | [#x2070-#x218F]
+                         | [#x2C00-#x2FEF] | [#x3001-#xD7FF]
+                         | [#xF900-#xFDCF] | [#xFDF0-#xFFFD]
+                         | [#x10000-#xEFFFF]
+[165]  PN_CHARS_U      ::= PN_CHARS_BASE | '_'
+
+[167]  PN_CHARS        ::= PN_CHARS_U | '-' | [0-9] | #x00B7
+                         | [#x0300-#x036F] | [#x203F-#x2040]
+[168]  PN_PREFIX       ::= PN_CHARS_BASE
+                           ( ( PN_CHARS | '.' )* PN_CHARS )?
+[169]  PN_LOCAL        ::= ( PN_CHARS_U | ':' | [0-9] | PLX )
+                           ( ( PN_CHARS | '.' | ':' | PLX )*
+                             ( PN_CHARS | ':' | PLX ) )?
+[170]  PLX             ::= PERCENT | PN_LOCAL_ESC
+[171]  PERCENT         ::= '%' HEX HEX
+[172]  HEX             ::= [0-9] | [A-F] | [a-f]
+[173]  PN_LOCAL_ESC    ::= '\' ( '_' | '~' | '.' | '-' | '!' | '$'
+                               | '&' | "'" | '(' | ')' | '*' | '+'
+                               | ',' | ';' | '=' | '/' | '?' | '#'
+                               | '@' | '%' )
+}|
+}
+
+As well as section 19.5 @italic{IRI References}:
+
+@nested[#:style 'inset]{
+Text matched by the @tt{IRIREF} production and @tt{PrefixedName} (after prefix expansion) production, after escape
+processing, must conform to the generic syntax of IRI references in section 2.2 of RFC 3987 "ABNF for IRI References and
+IRIs". For example, the @tt{IRIREF} @tt{<abc#def>} may occur in a SPARQL query string, but the @tt{IRIREF}
+@tt{<abc##def>} must not.
+}
+
+This package has the following type mapping:
+
+@tabular[
+#:style 'boxed
+#:sep @hspace[2]
+#:row-properties '(bottom-border ())
+#:column-properties '(top top)
+(list (list @bold{Racket type}      @bold{SPARQL production})
+      (list @racket[prefix-name?]   @tt{PNAME_NS})
+      (list @racket[local-name?]    @tt{PN_LOCAL})
+      (list @racket[prefixed-name?] @tt{PrefixedName}))
+]
+
+As well as the following string predicates:
+
+@tabular[
+#:style 'boxed
+#:sep @hspace[2]
+#:row-properties '(bottom-border ())
+#:column-properties '(top top)
+(list (list @bold{Racket type}             @bold{SPARQL production})
+      (list @racket[prefix-string?]        @tt{PNAME_NS})
+      (list @racket[prefix-name-string?]   @tt{PN_PREFIX})
+      (list @racket[local-name-string?]    @tt{PN_LOCAL})
+      (list @racket[prefixed-name-string?] @tt{PrefixedName}))
+]
+
+@subsection[]{Turtle}
+
+The Turtle grammar, @cite["RDF11TTL"] section 6.5 @italic{Grammar} reuses the definitions in SPARQL. Note that in the
+rule number @tt{[6s]} the suffix "s" denotes this specifically as a rule borrowed directly from SPARQL.
+
+@nested[#:style 'code-inset]{
+@verbatim|{
+[4]     prefixID       ::= '@prefix' PNAME_NS IRIREF '.'
+
+[6s]    sparqlPrefix   ::= "PREFIX" PNAME_NS IRIREF
+}|
+}
+
+Also, section 7.2 @italic{RDF Term Constructors} contains a table, a subset of which is below.
+
+@tabular[
+#:style 'boxed
+#:sep @hspace[2]
+#:row-properties '(bottom-border ())
+#:column-properties '(top top top)
+(list (list @bold{production} @bold{type} @bold{procedure})
+      (list @tt{PNAME_NS}
+            @tt{prefix}
+            @para{When used in a @tt{prefixID} or @tt{sparqlPrefix} production, the prefix is the potentially empty
+                       unicode string matching the first argument of the rule is a key into the namespaces map.})
+      (list @tt{PNAME_NS}
+            @tt{IRI}
+            @para{When used in a @tt{PrefixedName} production, the IRI is the value in the namespaces map corresponding
+                       to the first argument of the rule.})
+      (list  @tt{PNAME_LN}
+             @tt{IRI}
+             @para{A potentially empty prefix is identified by the first sequence, @tt{PNAME_NS}. The namespaces map
+                     must have a corresponding namespace. The unicode string of the IRI is formed by unescaping the
+                     reserved characters in the second argument, @tt{PN_LOCAL}, and concatenating this onto the
+                     namespace.}))
+]
+
+Finally, @cite["RDF11TTL"] section 2.4 IRIs, includes
+
+@nested[#:style 'inset]{
+Prefixed names are a superset of XML QNames. They differ in that the local part of prefixed names may include:
+
+@itemlist[
+  @item{leading digits, e.g. @tt{leg:3032571} or @tt{isbn13:9780136019701}}
+  @item{non leading colons, e.g. @tt{og:video:height}}
+  @item{reserved character escape sequences, e.g. @tt{wgs:lat\-long}}
+]
+}
+
+@subsection[]{RDF/XML}
+
+The specification RDF 1.1 Syntax @cite["RDF11XML"] (commonly referred to as RDF/XML) is constrained by it's use of XML
+to use the type @tt{NCName} (see @cite["XMLNAMES"], section 3, Declaring Namespaces) for both prefix and local names.
+However, the value space of this type is smaller than the names above and the specification's @cite["RDF11XML"],
+Section 8 -- Serializing an RDF Graph to RDF/XML, states:
+
+@nested[#:style 'inset]{
+There are some RDF Graphs as defined in @cite["RDF11CAS"] that cannot be serialized in RDF/XML. These are those that:
+
+@bold{Use property names that cannot be turned into XML namespace-qualified names.}
+
+@nested[#:style 'inset]{
+An XML namespace-qualified name (QName) has restrictions on the legal characters
+such that not all property URIs can be expressed as these names. It is recommended
+that implementors of RDF serializers, in order to break a URI into a namespace name
+and a local name, split it after the last XML non-NCName character, ensuring that
+the first character of the name is a Letter or '_'. If the URI ends in a non-NCName
+character then throw a "this graph cannot be serialized in RDF/XML" exception or error.
+}
+
+@bold{Use inappropriate reserved names as properties}
+
+@nested[#:style 'inset]{
+For example, a property with the same URI as any of the syntaxTerms production.
+}
+
+@bold{Use the @tt{rdf:HTML} datatype}
+
+@nested[#:style 'inset]{
+This datatype as introduced in RDF 1.1 @cite["RDF11CAS"].
+}
+}
+
+
 @;{============================================================================}
 @;{============================================================================}
 
@@ -2433,11 +2817,24 @@ added to the namespace.
              #:url "https://www.w3.org/TR/curie/"
              #:date "16 December 2010")
 
+  (bib-entry #:key "OWL2"
+             #:title "OWL 2 Web Ontology Language Document Overview (Second Edition)"
+             #:location "W3C"
+             #:url "https://www.w3.org/TR/owl2-overview/"
+             #:date "11 December 2012")
+
   (bib-entry #:key "RDF11CAS"
              #:title "RDF 1.1 Concepts and Abstract Syntax"
              #:author "G. Klyne, J. J. Carroll, and B. McBride"
              #:location "W3C"
              #:url "https://www.w3.org/TR/rdf11-concepts/"
+             #:date "25 February 2014")
+
+  (bib-entry #:key "RDF11DS"
+             #:title "RDF 1.1: On Semantics of RDF Datasets"
+             #:author "A. Zimmermann"
+             #:location "W3C"
+             #:url "https://www.w3.org/TR/rdf11-datasets/"
              #:date "25 February 2014")
 
   (bib-entry #:key "RDF11MT"
@@ -2468,6 +2865,13 @@ added to the namespace.
              #:url "https://www.w3.org/TR/rdf11-schema/"
              #:date "25 February 2014")
 
+  (bib-entry #:key "RDF11TRIG"
+             #:title "RDF 1.1 TriG: RDF Dataset Language"
+             #:author "G. Carothers, A. Seaborne, C. Bizer, and R. Cyganiak"
+             #:location "W3C"
+             #:url "https://www.w3.org/TR/trig/"
+             #:date "25 February 2014")
+
   (bib-entry #:key "RDF11TTL"
              #:title "RDF 1.1 Turtle -- Terse RDF Triple Language"
              #:author "D. Beckett, T. Berners-Lee, E. Prud'hommeaux, and . Carothers"
@@ -2496,12 +2900,40 @@ added to the namespace.
              #:url "http://www.ietf.org/rfc/rfc3987.txt"
              #:date "January 2005")
 
-  (bib-entry #:key "SPARQL"
+  (bib-entry #:key "RFC5646"
+             #:title "Tags for Identifying Languages"
+             #:author "A. Phillips, and M. Davis"
+             #:location "RFC"
+             #:url "http://www.ietf.org/rfc/rfc5646.txt"
+             #:date "September 2009")
+
+  (bib-entry #:key "SPARQL11OV"
+             #:title "SPARQL 1.1 Overview"
+             #:author "The W3C SPARQL Working Group"
+             #:location "W3C"
+             #:url "https://www.w3.org/TR/sparql11-overview/"
+             #:date "21 March 2013")
+
+  (bib-entry #:key "SPARQL11QL"
              #:title "SPARQL 1.1 Query Language"
              #:author "S. Harris, and A. Seaborne"
              #:location "W3C"
              #:url "https://www.w3.org/TR/sparql11-query/"
              #:date "21 March 2013")
+
+  (bib-entry #:key "SPARQL11SD"
+             #:title "SPARQL 1.1 Service Description"
+             #:author "G. T. Williams"
+             #:location "W3C"
+             #:url "https://www.w3.org/TR/sparql11-service-description/"
+             #:date "21 March 2013")
+
+  (bib-entry #:key "SWBPXSD"
+             #:title "XML Schema Datatypes in RDF and OWL"
+             #:author "J. J. Carroll, and J. Z. Pan"
+             #:location "W3C"
+             #:url "https://www.w3.org/TR/swbp-xsch-datatypes/"
+             #:date "14 March 2006")
 
   (bib-entry #:key "XML11"
              #:title "Extensible Markup Language (XML) 1.1 (Second Edition)"
@@ -2518,13 +2950,21 @@ added to the namespace.
              #:date "28 January 2009")
 
   (bib-entry #:key "XMLNAMES"
-             #:title "Namespaces in XML 1.0 (Third Edition)"
-             #:author "T. Bray, D. Hollander, A. Layman, R. Tobin, and H. S. Thompson"
+             #:title "Namespaces in XML 1.1 (Second Edition)"
+             #:author "T. Bray, D. Hollander, A. Layman, and R. Tobin"
              #:location "W3C"
-             #:url "https://www.w3.org/TR/xml-names/"
-             #:date "8 December 2009")
+             #:url "https://www.w3.org/TR/xml-names11/"
+             #:date "16 August 2006")
+
+  (bib-entry #:key "XMLXSD2"
+             #:title "XML Schema Part 2: Datatypes Second Edition"
+             #:author "P. V. Biron, and A. Malhotra"
+             #:location "W3C"
+             #:url "https://www.w3.org/TR/xmlschema-2/"
+             #:date "28 October 2004")
 )
 
 @;{============================================================================}
 @;{============================================================================}
+
 @index-section[]

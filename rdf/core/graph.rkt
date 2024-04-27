@@ -13,7 +13,6 @@
          rx
          uuid
          ;; --------------------------------------
-         "./namespace.rkt"
          "./literal.rkt"
          "./statement.rkt"
          "./triple.rkt"
@@ -21,13 +20,13 @@
          "./v/sd.rkt"
          "./v/void.rkt")
 
-(provide (except-out (struct-out graph)
+(provide graph-name?
+         (except-out (struct-out graph)
                      internal-make-graph
                      graph-indices)
+         unnamed-graph
+         named-graph
          graph-name-or-blank
-         make-default-graph
-         make-named-graph
-         graph-name?
          graph-named?
          graph-empty?
          graph-count
@@ -83,15 +82,14 @@
 (define graph-name? (or/c #f subject?))
 
 (struct graph (name (statements #:mutable) indices)
-  #:sealed
   #:transparent
   #:constructor-name internal-make-graph
   #:guard (struct-guard/c graph-name? statement-list? (hash/c graph-index-kind/c graph-index/c)))
 
-(define (make-default-graph statements)
+(define (unnamed-graph statements)
   (internal-make-graph #f statements (make-hash)))
 
-(define (make-named-graph name statements)
+(define (named-graph name statements)
   (when (url? name)
    (internal-make-graph name statements (make-hash))))
 
@@ -100,7 +98,9 @@
       (graph-name graph)
       (make-blank-node)))
 
-;; -------------------------------------------------------------------------------------------------
+;; - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+;; Indices
+;; - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
 (define (statement-key stmt index-kind)
   (cond
@@ -158,7 +158,9 @@
 (define (graph-index-clear graph)
   (for-each (lambda (index) (hash-clear! index)) (graph-indices graph)))
 
-;; -------------------------------------------------------------------------------------------------
+;; - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+;; Predicates & Properties
+;; - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
 (define (graph-named? graph)
   (not (false? (graph-name graph))))
@@ -169,15 +171,15 @@
 (define (graph-has-duplicates? graph)
   (not (false? (check-duplicates (graph-statements graph)))))
 
-;; -------------------------------------------------------------------------------------------------
-
 (define (graph-count graph)
   (length (graph-statements graph)))
 
 (define (graph-order graph)
   (set-count (set-union (graph-distinct-subjects graph) (graph-distinct-objects graph))))
 
-;; -------------------------------------------------------------------------------------------------
+;; - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+;; Statement Members
+;; - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
 (define (graph-member? graph statement)
   (when (statement? statement)
@@ -215,7 +217,9 @@
   (set-graph-statements! graph '())
   graph)
 
-;; -------------------------------------------------------------------------------------------------
+;; - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+;; Query
+;; - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 
 (define/contract (graph-distinct-subjects graph)
   (-> graph? (set/c subject?))
@@ -259,7 +263,7 @@
 
 (define (skolemize node label-map base-url)
   (cond ((blank-node? node)
-         (let ((old-label (blank-node-label node)))
+         (let ((old-label (blank-node->string node)))
           (if (hash-has-key? label-map old-label)
               (hash-ref label-map old-label)
               (let ((new-url (combine-url/relative base-url (uuid-string))))
@@ -298,15 +302,15 @@
     (map (λ (stmt)
             (let ((subject (skolemize (get-subject stmt) label-map base-url))
                   (object (skolemize (get-object stmt) label-map base-url)))
-              (make-triple subject (get-predicate stmt) object)))
+              (triple subject (get-predicate stmt) object)))
           statements)))
 
 (define/contract (graph-skolemize graph (domain-name "example.com"))
   (->* (graph?) (string?) graph?)
   (let ((new-statements (graph-skolemize-statements (graph-statements graph) domain-name)))
     (if (graph-named? graph)
-      (make-named-graph (graph-name graph) new-statements)
-      (make-default-graph new-statements))))
+        (named-graph (graph-name graph) new-statements)
+        (unnamed-graph new-statements))))
 
 (define/contract (graph-skolemize! graph (domain-name "example.com"))
   (->* (graph?) (string?) graph?)
@@ -324,18 +328,18 @@
     (append
      (if (graph-named? graph)
          (list
-          (make-type-statement subject sd:NamedGraph)
-          (make-triple subject sd:name (graph-name graph)))
+          (type-statement subject sd:NamedGraph)
+          (triple subject sd:name (graph-name graph)))
          (list
-          (make-type-statement subject sd:Graph)))
+          (type-statement subject sd:Graph)))
      (let ((graph-node (make-blank-node)))
        (list
-        (make-triple subject sd:graph graph-node)
-        (make-type-statement graph-node sd:Graph)
-        (make-triple graph-node void:triples (graph-count graph))
-        (make-triple graph-node void:distinct-subjects (count (graph-distinct-subjects graph)))
-        (make-triple graph-node void:properties (count (graph-distinct-predicates graph)))
-        (make-triple graph-node void:distinct-objects (count (graph-distinct-objects graph))))))))
+        (triple subject sd:graph graph-node)
+        (type-statement graph-node sd:Graph)
+        (triple graph-node void:triples (graph-count graph))
+        (triple graph-node void:distinct-subjects (count (graph-distinct-subjects graph)))
+        (triple graph-node void:properties (count (graph-distinct-predicates graph)))
+        (triple graph-node void:distinct-objects (count (graph-distinct-objects graph))))))))
 
 ;; -------------------------------------------------------------------------------------------------
 ;; Macros
@@ -348,47 +352,46 @@
     ;;     (make-sub-graph subject (list (list predicate (list object ...)) ...))))
     ;; ----------------------------------------------------------------------------
     ((_ subject (predicate (object ...)) ...) (not (list? (syntax->datum #'subject)))
-     #'(make-statement-list subject (list (list predicate (list object ...)) ...)))
+     #'(statement-list subject (list (list predicate (list object ...)) ...)))
     ((_ subject (predicate object) ...) (not (list? (syntax->datum #'subject)))
-     #'(make-statement-list subject (list (list predicate (list object)) ...)))
+     #'(statement-list subject (list (list predicate (list object)) ...)))
     ((_ subject predicate object) (not (list? (syntax->datum #'subject)))
-     #'(make-statement-list subject (list (list predicate (list object)))))
+     #'(statement-list subject (list (list predicate (list object)))))
     ;; ----------------------------------------------------------------------------
     ((_ (predicate (object ...)) ...)
-     #'(make-statement-list (make-blank-node) (list (list predicate (list object ...)) ...)))
+     #'(statement-list (make-blank-node) (list (list predicate (list object ...)) ...)))
     ((_ (predicate object) ...)
-     #'(make-statement-list (make-blank-node) (list (list predicate (list object)) ...)))
+     #'(statement-list (make-blank-node) (list (list predicate (list object)) ...)))
     ((_ predicate object)
-     #'(make-statement-list (make-blank-node) (list (list predicate (list object)))))))
+     #'(statement-list (make-blank-node) (list (list predicate (list object)))))))
 
 (define-syntax (rdf-graph stx)
   (syntax-case stx (=>)
     ((_ named => subject predicate object)
-     #'(make-named-graph
+     #'(named-graph
         (if (string? named) (string->url named) named)
         (list
-         (make-triple
+         (triple
           (if (string? subject) (string->url subject) subject)
           (if (string? predicate) (string->url predicate) predicate)
           (if (literal? object) object (->literal object))))))
     ((_ subject (predicate object) ...)
      #'(let ((common-subject (if (string? subject) (string->url subject) subject)))
-         (make-default-graph
+         (unnamed-graph
           (map
            (λ (pair)
              (let ((this-predicate (car pair))
                    (this-object (cadr pair)))
-               (make-triple
+               (triple
                 common-subject
                 (if (string? this-predicate) (string->url this-predicate) this-predicate)
                 (if (literal? this-object) this-object (->literal this-object)))))
            (list (list predicate object) ...)))))
     ((_ subject predicate object)
-     #'(make-default-graph
+     #'(unnamed-graph
         (list
-         (make-triple
+         (triple
           (if (string? subject) (string->url subject) subject)
           (if (string? predicate) (string->url predicate) predicate)
-          (if (literal? object) object (->literal object))))))
-    ))
+          (if (literal? object) object (->literal object))))))))
 

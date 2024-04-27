@@ -3,53 +3,139 @@
 ;;
 ;; Vocabulary: Describing Linked Datasets with the VoID Vocabulary
 ;;
-;; Namespace:        <http://rdfs.org/ns/void#>
 ;; Specification:    <http://vocab.deri.ie/void>
 ;; Last Date:        2011-03-06
-;; Preferred prefix: `void`
 ;;
 ;; Support status: incomplete
 ;;
 ;; See also: Describing Linked Datasets with the VoID Vocabulary (https://www.w3.org/TR/void/)
 ;;
 
-(require (only-in "../namespace.rkt" make-namespace make-name))
+(require (only-in "../name.rkt"
+                  string->local-name)
+         (only-in "../namespace.rkt"
+                  string->namespace
+                  make-nsname)
+         (only-in "../nsmap.rkt"
+                  string->prefix
+                  nsmap-set!))
 
 (provide (all-defined-out))
 
-(define void: (make-namespace "http://rdfs.org/ns/void#" "void"))
+;; ================================================================================================
+;; Namespace definition
+;; ================================================================================================
 
-;; well known end-point </.well-known/void>
+(define void-prefix-string "void")
+(define void-namespace-string "http://rdfs.org/ns/void#")
 
-(define void:Dataset (make-name void: "Dataset"))
-(define void:DatasetDescription (make-name void: "DatasetDescription"))
-(define void:Linkset (make-name void: "Linkset"))
-(define void:TechnicalFeature (make-name void: "TechnicalFeature"))
+(define void: (string->namespace void-namespace-string))
 
-(define void:class (make-name void: "class"))
-(define void:class-partition (make-name void: "classPartition"))
-(define void:classes (make-name void: "classes"))
-(define void:data-dump (make-name void: "dataDump"))
-(define void:distinct-objects (make-name void: "distinctObjects"))
-(define void:distinct-subjects (make-name void: "distinctSubjects"))
-(define void:documents (make-name void: "documents"))
-(define void:entities (make-name void: "entities"))
-(define void:example-resource (make-name void: "exampleResource"))
-(define void:feature (make-name void: "feature"))
-(define void:in-dataset (make-name void: "inDataset"))
-(define void:link-predicate (make-name void: "linkPredicate"))
-(define void:objects-target (make-name void: "objectsTarget"))
-(define void:opensearch-description (make-name void: "openSearchDescription"))
-(define void:properties (make-name void: "properties"))
-(define void:property (make-name void: "property"))
-(define void:property-partition (make-name void: "propertyPartition"))
-(define void:root-resource (make-name void: "rootResource"))
-(define void:sparql-endpoint (make-name void: "sparqlEndpoint"))
-(define void:subjects-target (make-name void: "subjectsTarget"))
-(define void:subset (make-name void: "subset"))
-(define void:target (make-name void: "target"))
-(define void:triples (make-name void: "triples"))
-(define void:uri-lookup-endpoint (make-name void: "uriLookupEndpoint"))
-(define void:uri-regex-pattern (make-name void: "uriRegexPattern"))
-(define void:uri-space (make-name void: "uriSpace"))
-(define void:vocabulary (make-name void: "vocabulary"))
+(define (nsmap-add-void map)
+  (nsmap-set! map
+              (string->prefix void-prefix-string)
+              (string->namespace void-namespace-string)))
+
+;; ================================================================================================
+;; Name definitions
+;; ================================================================================================
+
+(define void:Dataset
+  (make-nsname void: (string->local-name "Dataset")))
+
+(define void:DatasetDescription
+  (make-nsname void: (string->local-name "DatasetDescription")))
+
+(define void:Linkset
+  (make-nsname void: (string->local-name "Linkset")))
+
+(define void:TechnicalFeature
+  (make-nsname void: (string->local-name "TechnicalFeature")))
+
+(define void:class
+  (make-nsname void: (string->local-name "class")))
+
+(define void:class-partition
+  (make-nsname void: (string->local-name "classPartition")))
+
+(define void:classes
+  (make-nsname void: (string->local-name "classes")))
+
+(define void:data-dump
+  (make-nsname void: (string->local-name "dataDump")))
+
+(define void:distinct-objects
+  (make-nsname void: (string->local-name "distinctObjects")))
+
+(define void:distinct-subjects
+  (make-nsname void: (string->local-name "distinctSubjects")))
+
+(define void:documents
+  (make-nsname void: (string->local-name "documents")))
+
+(define void:entities
+  (make-nsname void: (string->local-name "entities")))
+
+(define void:example-resource
+  (make-nsname void: (string->local-name "exampleResource")))
+
+(define void:feature
+  (make-nsname void: (string->local-name "feature")))
+
+(define void:in-dataset
+  (make-nsname void: (string->local-name "inDataset")))
+
+(define void:link-predicate
+  (make-nsname void: (string->local-name "linkPredicate")))
+
+(define void:objects-target
+  (make-nsname void: (string->local-name "objectsTarget")))
+
+(define void:opensearch-description
+  (make-nsname void: (string->local-name "openSearchDescription")))
+
+(define void:properties
+  (make-nsname void: (string->local-name "properties")))
+
+(define void:property
+  (make-nsname void: (string->local-name "property")))
+
+(define void:property-partition
+  (make-nsname void: (string->local-name "propertyPartition")))
+
+(define void:root-resource
+  (make-nsname void: (string->local-name "rootResource")))
+
+(define void:sparql-endpoint
+  (make-nsname void: (string->local-name "sparqlEndpoint")))
+
+(define void:subjects-target
+  (make-nsname void: (string->local-name "subjectsTarget")))
+
+(define void:subset
+  (make-nsname void: (string->local-name "subset")))
+
+(define void:target
+  (make-nsname void: (string->local-name "target")))
+
+(define void:triples
+  (make-nsname void: (string->local-name "triples")))
+
+(define void:uri-lookup-endpoint
+  (make-nsname void: (string->local-name "uriLookupEndpoint")))
+
+(define void:uri-regex-pattern
+  (make-nsname void: (string->local-name "uriRegexPattern")))
+
+(define void:uri-space
+  (make-nsname void: (string->local-name "uriSpace")))
+
+(define void:vocabulary
+  (make-nsname void: (string->local-name "vocabulary")))
+
+;; ================================================================================================
+;; Other definitions
+;; ================================================================================================
+
+(define void-wellknown-path "/.well-known/void")
+

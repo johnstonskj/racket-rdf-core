@@ -2,7 +2,6 @@
 
 (require rackunit
          ;; --------------------------------------
-         "../namespace.rkt"
          "../statement.rkt"
          "../io.rkt")
 

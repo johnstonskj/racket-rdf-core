@@ -18,11 +18,11 @@
        "Check Boolean to Literal"
      (let ((literal (boolean->literal #t)))
        (check-equal? (literal-lexical-form literal) "true")
-       (check-equal? (literal-datatype-iri literal) (name->url xsd:boolean))
+       (check-equal? (literal-datatype-iri literal) (nsname->url xsd:boolean))
        (check-equal? (literal-language-tag literal) #f))
      (let ((literal (boolean->literal #f)))
        (check-equal? (literal-lexical-form literal) "false")
-       (check-equal? (literal-datatype-iri literal) (name->url xsd:boolean))
+       (check-equal? (literal-datatype-iri literal) (nsname->url xsd:boolean))
        (check-equal? (literal-language-tag literal) #f)))
    ))
 

@@ -4,29 +4,31 @@
          racket/generic
          ;; --------------------------------------
          "./literal.rkt"
+         (only-in "./name.rkt" local-name-string?)
          "./namespace.rkt"
          "./v/rdf.rkt")
 
-(provide (except-out (struct-out blank-node)
-                     internal-make-blank-node)
-         make-blank-node
-         ;; --------------------------------------
-         resource?
-         subject?
-         predicate?
-         object?
-         ;; --------------------------------------
-         (rename-out (gen:any-statement gen:statement))
-         (rename-out (any-statement? statement?))
-         statement/c
-         get-subject
-         get-predicate
-         get-object
-         ;; --------------------------------------
-         statement->list
-         statement->reified-list
-         ;; --------------------------------------
-         statement-list?)
+(provide gen:statement
+         (rename-out (new-statement/c statement/c))
+         (contract-out
+          (blank-node? (-> any/c boolean?))
+          (make-blank-node (-> blank-node?))
+          (blank-node->string (-> blank-node? local-name-string?))
+          ;; --------------------------------------
+          (resource? (-> any/c boolean?))
+          (subject? (-> any/c boolean?))
+          (predicate? (-> any/c boolean?))
+          (object? (-> any/c boolean?))
+          ;; --------------------------------------
+          (statement? (-> any/c boolean?))
+          (get-subject (-> statement? subject?))
+          (get-predicate (-> statement? predicate?))
+          (get-object (-> statement? object?))
+          (statement-constructor/c contract?)
+          ;; --------------------------------------
+          (statement-list? (-> any/c boolean?))
+          (statement->list (-> statement? (list/c subject? predicate? object?)))
+          (statement->reified-list (-> statement? (listof statement?)))))
 
 ;; -------------------------------------------------------------------------------------------------
 ;; `blank-node` types
@@ -44,12 +46,14 @@
     next-label))
 
 (struct blank-node (label)
-  #:sealed
   #:transparent
   #:constructor-name internal-make-blank-node)
 
 (define (make-blank-node)
   (internal-make-blank-node (make-blank-node-label)))
+
+(define (blank-node->string blank)
+  (format "B~X" (blank-node-label blank)))
 
 ;; -------------------------------------------------------------------------------------------------
 ;; Predicates
@@ -67,21 +71,21 @@
 ;; `statement` generic type
 ;; -------------------------------------------------------------------------------------------------
 
-(define-generics any-statement
-  (get-subject any-statement)
-  (get-predicate any-statement)
-  (get-object any-statement)
+(define-generics statement
+  (get-subject statement)
+  (get-predicate statement)
+  (get-object statement)
   #:requires (get-subject get-predicate get-object))
 
-(define statement/c
-  (any-statement/c (get-subject (-> any-statement? subject?))
-                   (get-predicate (-> any-statement? predicate?))
-                   (get-object (-> any-statement? object?))))
+(define new-statement/c
+  (statement/c (get-subject (-> statement? subject?))
+                   (get-predicate (-> statement? predicate?))
+                   (get-object (-> statement? object?))))
 
 (define statement-constructor/c
-  (-> subject? predicate? object? statement/c))
+  (-> subject? predicate? object? new-statement/c))
 
-(define statement-list? (listof any-statement?))
+(define statement-list? (listof statement?))
 
 ;; -------------------------------------------------------------------------------------------------
 

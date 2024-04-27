@@ -1,8 +1,8 @@
 #lang racket/base
 
 (require rackunit
-         racket/list
          ;; --------------------------------------
+         "../name.rkt"
          "../namespace.rkt"
          "../literal.rkt"
          "../triple.rkt"
@@ -20,25 +20,25 @@
 
    (test-case
        "Example query"
-     (let* ((ns (make-namespace "http://example.com/" "ex"))
+     (let* ((ns (string->namespace "http://example.com/"))
             (graph
-             (make-default-graph
+             (unnamed-graph
               (list
-               (make-triple (namespace-make-url ns "thing")
-                               (namespace-make-url ns "hasName")
-                               (->literal "bob"))
-               (make-triple (namespace-make-url ns "thing")
-                               (namespace-make-url ns "hasAge")
-                               (->literal 42))
-               (make-triple (namespace-make-url ns "other")
-                               (namespace-make-url ns "hasName")
-                               (->literal "sheila"))
-               (make-triple (namespace-make-url ns "other")
-                               (namespace-make-url ns "hasAge")
-                               (->literal 24)))))
+               (triple (namespace+name->url ns (string->local-name "thing"))
+                            (namespace+name->url ns (string->local-name "hasName"))
+                            (->literal "bob"))
+               (triple (namespace+name->url ns (string->local-name "thing"))
+                            (namespace+name->url ns (string->local-name "hasAge"))
+                            (->literal 42))
+               (triple (namespace+name->url ns (string->local-name "other"))
+                            (namespace+name->url ns (string->local-name "hasName"))
+                            (->literal "sheila"))
+               (triple (namespace+name->url ns (string->local-name "other"))
+                            (namespace+name->url ns (string->local-name "hasAge"))
+                            (->literal 24)))))
             (query-pattern
              (list (ignore)
-                   (comparitor (namespace-make-url ns "hasName"))
+                   (comparitor (namespace+name->url ns (string->local-name "hasName")))
                    (variable "name")))
             (results (graph-query graph query-pattern)))
        (check-equal? (statement-pattern->string query-pattern) "_ <http://example.com/hasName> ?name .\n")

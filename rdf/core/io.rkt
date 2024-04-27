@@ -9,6 +9,7 @@
          net/url-string
          ;; --------------------------------------
          "./namespace.rkt"
+         "./nsmap.rkt"
          "./literal.rkt"
          "./statement.rkt"
          "./graph.rkt"
@@ -42,8 +43,8 @@
          write-nquad-graph
          graph->nquad-string
          ;; --------------------------------------
-         write-ntriple-dataset
-         dataset->ntriple-string
+         write-trig-dataset
+         dataset->trig-string
          ;; --------------------------------------
          write-statement-pattern
          statement-pattern->string)
@@ -63,14 +64,17 @@
 ;; Namespaces
 ;; -------------------------------------------------------------------------------------------------
 
-(define import-style/c (or/c 'ttl))
+(define import-style/c (or/c 'ttl 'sparql))
 
-(define/contract (namespace->import-statement ns style)
-  (-> namespace? import-style/c string?)
-  (when (and (namespace? ns) (import-style/c style))
-    (cond
-      ((symbol=? style 'ttl)
-       (format "@prefix ~a: <~a>.~n" (namespace-prefix ns) (url->string (namespace-url ns)))))))
+(define/contract (namespace->import-statement prefix ns style)
+  (-> (or/c prefix? #f) namespace? import-style/c string?)
+  (format "~a ~a <~a>~a~n"
+          (cond
+            ((symbol=? style 'ttl) "@prefix")
+            ((symbol=? style 'sparql) "PREFIX"))
+          (if prefix (prefix->string prefix) ":")
+          (namespace->string ns)
+          (if (symbol=? style 'ttl) " ." "")))
 
 ;; -------------------------------------------------------------------------------------------------
 ;; Printing literals
@@ -94,7 +98,7 @@
 
 (define/contract (write-ntriple-blank-node val (out (current-output-port)))
   (->* (blank-node?) (output-port?) void?)
-  (fprintf out "_:~X" (blank-node-label val)))
+  (fprintf out "_:B~a" (blank-node->string val)))
 
 (writer->to-string blank-node ntriple)
 
@@ -188,17 +192,18 @@
 ;; Printing data sets
 ;; -------------------------------------------------------------------------------------------------
 
-(define/contract (write-ntriple-dataset dataset (out (current-output-port)))
+(define/contract (write-trig-dataset dataset (out (current-output-port)))
   (->* (dataset?) (output-port?) void?)
   (for-each
    (λ (graph)
-     (when (graph-named? graph)
-       (fprintf out "graph ~a {~n" (write-ntriple-subject (graph-name graph) out)))
+     (if (graph-named? graph)
+         (fprintf out "~a {~n" (write-ntriple-subject (graph-name graph) out))
+         (displayln "{" out))
      (write-ntriple-graph graph out)
      (displayln "}" out))
    (dataset-graphs dataset)))
 
-(writer->to-string dataset ntriple)
+(writer->to-string dataset trig)
 
 ;; -------------------------------------------------------------------------------------------------
 ;; Printing statement patterns

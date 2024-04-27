@@ -1,21 +1,48 @@
 #lang racket/base
 
-(require "./namespace.rkt"
+(require "./name.rkt"
+         "./namespace.rkt"
+         "./nsmap.rkt"
          "./literal.rkt"
          "./statement.rkt"
          "./triple.rkt"
          "./graph.rkt"
+         "./quad.rkt"
          "./dataset.rkt"
          "./io.rkt")
 
-(provide ncname?
-         string->ncname
-         symbol->ncname
-         make-namespace
+(provide ;; name ---------------------------------
+         local-name?
+         string->local-name
+         local-name->string
+         ;; namespace ----------------------------
          namespace?
-         make-name
-         name?
-         ;; --------------------------------------
+         url->namespace
+         namespace->url
+         nsname?
+         nsname
+         make-nsname
+         nsname->url
+         ;; nsmap --------------------------------
+         prefix?
+         string->prefix
+         empty-prefix
+         prefix->string
+         ;; ----------
+         prefixed-name?
+         prefixed-name
+         string->prefixed-name
+         prefixed-name->string
+         ;; ----------
+         nsmap?
+         nsmap-empty?
+         make-nsmap
+         nsmap-has-prefix?
+         nsmap-has-default?
+         nsmap-ref
+         nsmap-ref-default
+         nsmap-set!
+         ;; literal ------------------------------
          literal?
          literal-lexical-form
          literal-datatype-iri
@@ -23,10 +50,9 @@
          make-untyped-literal
          make-typed-literal
          make-lang-string-literal
-         write-ntriple-literal
-         ;; --------------------------------------
-         make-blank-node
+         ;; statement ----------------------------
          blank-node?
+         make-blank-node
          subject?
          predicate?
          object?
@@ -34,15 +60,13 @@
          get-subject
          get-predicate
          get-object
-         ;; --------------------------------------
-         make-triple
+         ;; triple -------------------------------
          triple?
-         write-ntriple-statement
-         write-nquad-statement
-         ;; --------------------------------------
-         make-default-graph
-         make-named-graph
+         triple
+         ;; graph --------------------------------
          graph?
+         unnamed-graph
+         named-graph
          graph-named?
          graph-empty?
          graph-member?
@@ -50,15 +74,25 @@
          graph-add-all
          graph-remove
          graph-remove-all
-         write-ntriple-graph
-         write-nquad-graph
-         ;; --------------------------------------
-         make-dataset
+         ;; quad ---------------------------------
+         quad?
+         quad
+         statement->quad
+         graph->quads
+         ;; dataset ------------------------------
          dataset?
+         named-dataset
+         unnamed-dataset
          dataset-empty?
          dataset-has-named?
          dataset-has-default?
          dataset-ref
          dataset-ref-default
          dataset-set!
-         dataset-remove!)
+         dataset-remove!
+         ;; io -----------------------------------
+         write-ntriple-literal
+         write-ntriple-statement
+         write-ntriple-graph
+         write-nquad-statement
+         write-nquad-graph)

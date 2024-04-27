@@ -14,127 +14,112 @@
          "./v/rdf.rkt"
          "./v/xsd.rkt")
 
-(provide literal?
-         literal-lexical-form
-         literal-datatype-iri
-         literal-language-tag
-         make-untyped-literal
-         make-typed-literal
-         make-lang-string-literal
-         ;; --------------------------------------
-         has-datatype-iri?
-         has-language-tag?
-         has-xsd-datatype?
-         is-a?
-         ;; --------------------------------------
-         boolean->literal
-         bytes->literal
-         date->literal
-         datetime->literal
-         exact-integer->literal
-         flonum->literal
-         inexact->literal
-         string->literal
-         time->literal
-         ->literal
-         ;; --------------------------------------
-         literal-true
-         literal-false
-         literal-empty-string
-         literal-exact-zero
-         literal-flonum-zero
-         literal-inexact-zero)
+(provide (contract-out
+          (struct literal ((lexical-form string?)
+                           (datatype-iri (or/c url-absolute? #f))
+                           (language-tag (or/c language-tag? #f)))
+            #:omit-constructor)
+          (make-untyped-literal (-> string? literal?))
+          (make-typed-literal (-> string? url-absolute? literal?))
+          (make-lang-string-literal (-> string? language-tag? literal?))
+          ;; --------------------------------------
+          (has-datatype-iri? (-> literal? boolean?))
+          (has-language-tag? (-> literal? boolean?))
+          (has-xsd-datatype? (-> literal? boolean?))
+          (is-a? (-> literal? url-absolute? boolean?))
+          ;; --------------------------------------
+          (boolean->literal (-> boolean? literal?))
+          (bytes->literal (-> bytes? literal?))
+          (date->literal (-> date? literal?))
+          (datetime->literal (-> date? literal?))
+          (exact-integer->literal (-> exact-integer? literal?))
+          (flonum->literal (-> flonum? literal?))
+          (inexact->literal (-> inexact? literal?))
+          (string->literal (-> string? literal?))
+          (time->literal (-> date? literal?))
+          (->literal
+           (-> (or/c boolean? bytes? date? string? exact-integer? flonum? inexact?)
+               literal?))
+          ;; --------------------------------------
+          (literal-true literal?)
+          (literal-false literal?)
+          (literal-empty-string literal?)
+          (literal-exact-zero literal?)
+          (literal-flonum-zero literal?)
+          (literal-inexact-zero literal?)))
 
 ;; ------------------------------------------------------------------------------------------------
 ;; Literal structure
 ;; ------------------------------------------------------------------------------------------------
 
 (struct literal (lexical-form datatype-iri language-tag)
-  #:sealed
   #:transparent
   #:constructor-name internal-make-literal
   #:guard (struct-guard/c string? (or/c url? #f) (or/c language-tag? #f)))
 
-(define/contract (make-untyped-literal form)
-  (-> string? literal?)
+(define (make-untyped-literal form)
   (internal-make-literal form #f #f))
 
-(define/contract (make-typed-literal form datatype)
-  (-> string? url-absolute? literal?)
+(define (make-typed-literal form datatype)
   (internal-make-literal form datatype #f))
 
-(define/contract (make-lang-string-literal form language)
-  (-> string? language-tag? literal?)
-  (internal-make-literal form (name->url rdf:lang-String) language))
+(define (make-lang-string-literal form language)
+  (internal-make-literal form (nsname->url rdf:lang-String) language))
 
 ;; ------------------------------------------------------------------------------------------------
 ;; Literal predicates
 ;; ------------------------------------------------------------------------------------------------
 
-(define/contract (has-datatype-iri? val)
-  (-> literal? boolean?)
+(define (has-datatype-iri? val)
   (not (false? (literal-datatype-iri val))))
 
-(define/contract (has-language-tag? val)
-  (-> literal? boolean?)
+(define (has-language-tag? val)
   (not (false? (literal-language-tag val))))
 
-(define/contract (has-xsd-datatype? val)
-  (-> literal? boolean?)
+(define (has-xsd-datatype? val)
   (if (has-datatype-iri? val)
       (string-prefix? (url->string (literal-datatype-iri val))
-                      (url->string (namespace-url (name-namespace xsd:any-type))))
+                      (url->string (namespace->url (nsname-namespace xsd:any-type))))
       #f))
 
-(define/contract (is-a? val datatype)
-  (-> literal? url-absolute? boolean?)
+(define (is-a? val datatype)
   (equal? (literal-datatype-iri val) datatype))
 
 ;; ------------------------------------------------------------------------------------------------
 ;; Literal conversions
 ;; ------------------------------------------------------------------------------------------------
 
-(define/contract (boolean->literal val)
-  (-> boolean? literal?)
-  (make-typed-literal (if (false? val) "false" "true") (name->url xsd:boolean)))
+(define (boolean->literal val)
+  (make-typed-literal (if (false? val) "false" "true") (nsname->url xsd:boolean)))
 
-(define/contract (bytes->literal val)
-  (-> bytes? literal?)
-  (make-typed-literal val (name->url xsd:hex-binary)))
+(define (bytes->literal val)
+  (make-typed-literal val (nsname->url xsd:hex-binary)))
 
-(define/contract (date->literal val)
-  (-> date? literal?)
+(define (date->literal val)
   (parameterize ((date-display-format 'iso-8601))
-    (make-typed-literal (date->string val) val (name->url xsd:date))))
+    (make-typed-literal (date->string val) val (nsname->url xsd:date))))
 
-(define/contract (datetime->literal val)
-  (-> date? literal?)
+(define (datetime->literal val)
   (parameterize ((date-display-format 'iso-8601))
-    (make-typed-literal (date->string val #t) val (name->url xsd:date-time))))
+    (make-typed-literal (date->string val #t) val (nsname->url xsd:date-time))))
 
-(define/contract (exact-integer->literal val)
-  (-> exact-integer? literal?)
-  (make-typed-literal (format "~a" val) (name->url xsd:integer)))
+(define (exact-integer->literal val)
+  (make-typed-literal (format "~a" val) (nsname->url xsd:integer)))
 
-(define/contract (flonum->literal val)
-  (-> flonum? literal?)
+(define (flonum->literal val)
   (make-typed-literal (format "~a" val)
-                      (name->url (if (single-flonum? val) xsd:float xsd:double))))
+                      (nsname->url (if (single-flonum? val) xsd:float xsd:double))))
 
-(define/contract (inexact->literal val)
-  (-> inexact? literal?)
-  (make-typed-literal (format "~a" val) (name->url xsd:decimal)))
+(define (inexact->literal val)
+  (make-typed-literal (format "~a" val) (nsname->url xsd:decimal)))
 
-(define/contract (string->literal val)
-  (-> string? literal?)
-  (make-typed-literal val (name->url xsd:string)))
+(define (string->literal val)
+  (make-typed-literal val (nsname->url xsd:string)))
 
-(define/contract (time->literal val)
-  (-> date? literal?)
-  (make-typed-literal (format "~a" val) (name->url xsd:time)))
+(define (time->literal val)
+  (make-typed-literal (format "~a" val) (nsname->url xsd:time)))
 
-(define/contract (->literal val)
-  (-> (or/c boolean? bytes? date? string? exact-integer? flonum? inexact?) literal?)
+(define (->literal val)
   (cond
     ((boolean? val) (boolean->literal val))
     ((bytes? val) (bytes->literal val))

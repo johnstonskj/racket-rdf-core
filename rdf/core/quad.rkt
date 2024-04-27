@@ -1,32 +1,33 @@
 #lang racket/base
 
 (require racket/contract
+         racket/function
          ;; --------------------------------------
          "./graph.rkt"
          "./literal.rkt"
          "./statement.rkt")
 
-(provide (struct-out quad)
-         statement->quad
-         graph->quads)
+(provide (contract-out
+          (quad? (-> any/c boolean?))
+          (quad (-> subject? predicate? object? graph-name? quad?))
+          (rename quad-graph-name get-graph-name (-> quad? graph-name?))
+          (statement->quad (-> statement? graph-name? quad?))
+          (graph->quads (-> graph? (listof quad?)))))
 
 (struct quad (subject predicate object graph-name)
-  #:sealed
   #:transparent
-  #:constructor-name make-quad
-  #:guard (struct-guard/c resource? blank-node? literal? graph-name?)
+  #:guard (struct-guard/c subject? predicate? object? graph-name?)
   #:methods gen:statement
   ((define (get-subject triple) (quad-subject triple))
    (define (get-predicate triple) (quad-predicate triple))
    (define (get-object triple) (quad-object triple))))
 
-(define/contract (statement->quad stmt graph-name)
-  (-> statement? graph-name? quad?)
-  (make-quad (get-subject stmt)
-             (get-predicate  stmt)
-             (get-object stmt)
-             graph-name))
+(define (statement->quad stmt graph-name)
+  (quad (get-subject stmt)
+        (get-predicate  stmt)
+        (get-object stmt)
+        graph-name))
 
 (define (graph->quads graph)
   (let ((graph-name (if (graph-named? graph) (graph-name graph) (make-blank-node))))
-    (map (λ (stmt) (statement->quad stmt graph-name)) (graph-statements graph))))
+    (map (curryr statement->quad graph-name) (graph-statements graph))))

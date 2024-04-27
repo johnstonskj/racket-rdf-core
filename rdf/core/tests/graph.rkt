@@ -3,6 +3,7 @@
 (require net/url-string
          rackunit
          ;; --------------------------------------
+         "../name.rkt"
          "../namespace.rkt"
          "../literal.rkt"
          "../statement.rkt"
@@ -23,8 +24,8 @@
        "function `make-sub-graph`"
      (display
       (graph->ntriple-string
-       (make-default-graph
-        (make-statement-list "http://example.com/p/me"
+       (unnamed-graph
+        (statement-list "http://example.com/p/me"
                              `(("http://example.com/v/people#hasFirstName" (,(string->literal "Me")))
                                ("http://example.com/v/people#hasLastName" (,(string->literal "!")))
                                ("http://example.com/v/people#hasScores" ,(map exact-integer->literal '(2 4 6)))))))))
@@ -38,17 +39,29 @@
 
    (test-case
        "function `graph-skolemize`"
-     (let* ((ns (make-namespace "http://example.com/" "ex"))
+     (let* ((ns (string->namespace "http://example.com/"))
             (bnode-1 (make-blank-node))
             (bnode-2 (make-blank-node))
-            (test-graph (make-default-graph
+            (test-graph (unnamed-graph
                          (list
-                          (make-triple (namespace-make-url ns "thing") (namespace-make-url ns "hasName") bnode-1)
-                          (make-triple bnode-1 (namespace-make-url ns "firstName") (string->literal "spongebob"))
-                          (make-triple bnode-1 (namespace-make-url ns "lastName") (string->literal "squarepants"))
-                          (make-triple bnode-1 (namespace-make-url ns "hasFriend") bnode-2)
-                          (make-triple bnode-2 (namespace-make-url ns "firstName") (string->literal "patrick"))
-                          (make-triple bnode-2 (namespace-make-url ns "lastName") (string->literal "star"))))))
+                          (triple (namespace+name->url ns (string->local-name "thing"))
+                                       (namespace+name->url ns (string->local-name "hasName"))
+                                       bnode-1)
+                          (triple bnode-1
+                                       (namespace+name->url ns (string->local-name "firstName"))
+                                       (string->literal "spongebob"))
+                          (triple bnode-1
+                                       (namespace+name->url ns (string->local-name "lastName"))
+                                       (string->literal "squarepants"))
+                          (triple bnode-1
+                                       (namespace+name->url ns (string->local-name "hasFriend"))
+                                       bnode-2)
+                          (triple bnode-2
+                                       (namespace+name->url ns (string->local-name "firstName"))
+                                       (string->literal "patrick"))
+                          (triple bnode-2
+                                       (namespace+name->url ns (string->local-name "lastName"))
+                                       (string->literal "star"))))))
        (printf "~a" (graph->ntriple-string test-graph))
        (printf "~a" (graph->ntriple-string (graph-skolemize test-graph "example.org")))))))
 
