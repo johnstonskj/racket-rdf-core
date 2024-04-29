@@ -1472,7 +1472,7 @@ Returns the number of statements in the graph, this does not take into account w
           [graph graph?])
          exact-positive-integer?]{
 Returns the @italic{order} of the graph, or the number of vertices. For RDF a vertex is defined as any
-@racket[resource?] or @[blank-node?] in the graph.
+@racket[resource?] or @racket[blank-node?] in the graph.
 }
 
 @defproc[(graph->distinct-graph [graph graph?]) graph?]{

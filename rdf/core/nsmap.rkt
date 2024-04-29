@@ -48,7 +48,7 @@
           ;; --------------------------------------
           ;; --------------------------------------
           (struct nsmap ((mapping (hash/c (or/c prefix? #f) namespace?))))
-          (make-common-nsmap (-> nsmap?))5;75;35M
+          (make-common-nsmap (-> nsmap?))
           (make-nsmap (->* () ((listof (cons/c prefix? namespace?))) nsmap?))
           (nsmap-empty?  (-> nsmap? boolean?))
           (nsmap-count (-> nsmap? exact-nonnegative-integer?))

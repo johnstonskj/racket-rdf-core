@@ -63,7 +63,8 @@ COVEROUTDIR=$(BUILDOUTDIR)/coverage
 
 test:
 	raco test \
-		--make --table \
+		--make \
+		--table \
 		--collection $(COLLECTS)
 
 # - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
@@ -152,6 +153,6 @@ $(HTMLDOCOUTDIR)/%.svg: $(SCRBLDIR)/%.svg | $(HTMLDOCOUTDIR)
 .PHONY: clean
 
 clean:
-	find . -name compiled -type d | xargs rm -rf
+	fd . -name compiled -type d | xargs rm -rf
 	rm -rf $(BUILDOUTDIR)
 	rm -rf $(COLLECTS)/doc
