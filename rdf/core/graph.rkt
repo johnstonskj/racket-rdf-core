@@ -27,6 +27,7 @@
          unnamed-graph
          named-graph
          graph-name-or-blank
+         graph->distinct-graph
          graph-named?
          graph-empty?
          graph-count
@@ -97,6 +98,10 @@
   (if (graph-named? graph)
       (graph-name graph)
       (make-blank-node)))
+
+(define (graph->distinct-graph graph)
+  (graph (graph-name graph)
+         (remove-duplicates (graph-statements graph))))
 
 ;; - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 ;; Indices

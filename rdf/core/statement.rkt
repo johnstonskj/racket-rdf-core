@@ -79,8 +79,8 @@
 
 (define new-statement/c
   (statement/c (get-subject (-> statement? subject?))
-                   (get-predicate (-> statement? predicate?))
-                   (get-object (-> statement? object?))))
+               (get-predicate (-> statement? predicate?))
+               (get-object (-> statement? object?))))
 
 (define statement-constructor/c
   (-> subject? predicate? object? new-statement/c))

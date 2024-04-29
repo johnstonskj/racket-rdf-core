@@ -40,13 +40,13 @@
 ;; Name definitions
 ;; ================================================================================================
 
-(define rdf:lang-String
+(define rdf:langString
   (make-nsname rdf: (string->local-name "langString")))
 
 (define rdf:HTML
   (make-nsname rdf: (string->local-name "HTML")))
 
-(define rdf:XML-Literal
+(define rdf:XMLLiteral
   (make-nsname rdf: (string->local-name "XMLLiteral")))
 
 (define rdf:Property

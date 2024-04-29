@@ -35,7 +35,21 @@
                              rdf/core/name
                              rdf/core/literal
                              rdf/core/namespace
-                             rdf/core/nsmap)))
+                             rdf/core/nsmap)
+                   '(define (implies x y) (if (boolean=? x #t)
+                                              (if (not (boolean=? y #t))
+                                                  (raise-argument-error 'y "#t" y)
+                                                  #t)
+                                              #f))
+                   '(define (iff x y) (cond ((boolean=? x #t)
+                                             (if (not (boolean=? y #t))
+                                                 (raise-argument-error 'y "#t" y)
+                                                 #t))
+                                            ((boolean=? x #f)
+                                             (if (not (boolean=? y #f))
+                                                 (raise-argument-error 'y "#f" y)
+                                                 #t))
+                                          (else #f)))))
 
 @(define compact-list
    (make-style "Compact"
@@ -44,7 +58,7 @@
 @(define figure-flow
    (make-style "Figure"
    (list (make-css-addition "scribblings/figure.css"))))
-
+V
 @(define wide-flow
    (make-style "Wide"
    (list (make-css-addition "scribblings/wide.css"))))
@@ -386,13 +400,36 @@ Returns the local name as a string.
 ]
 }
 
+The following table shows how different combinations of namespace, prefix, local name, and IRI can be constructed.
+
+@tabular[
+#:style 'boxed
+#:sep @hspace[2]
+#:row-properties '(bottom-border ())
+#:column-properties '(top top top top (top center))
+(list (list @bold{function} @bold{from} @bold{add} @bold{into} @bold{map?})
+
+      (list @racket[namespace+name->url] @racket[namespace?] @racket[local-name?] @racket[url?] @para{No})
+      (list @racket[namespace+name->prefixed-name] @racket[namespace?] @racket[local-name?] @racket[prefixed-name?] @para{Yes})
+
+      (list @racket[nsname->url] @racket[nsname?] "" @racket[url?] @para{No})
+      (list @racket[nsname-make-nsname] @racket[nsname?] @racket[local-name?] @racket[nsname?] @para{No})
+      (list @racket[nsname->prefixed-name] @racket[nsname?] "" @racket[prefixed-name?] @para{Yes})
+
+      (list @racket[prefix+name->nsname] @racket[prefix?] @racket[local-name?] @racket[nsname?] @para{Yes})
+      (list @racket[prefix+name->url] @racket[prefix?] @racket[local-name?] @racket[url?] @para{Yes})
+
+      (list @racket[prefixed-name->nsname] @racket[prefixed-name?] "" @racket[nsname?] @para{Yes})
+      (list @racket[prefixed-name->url] @racket[prefixed-name?] "" @racket[url?] @para{Yes})
+)
+]
+
 @;{============================================================================}
 @;{============================================================================}
 @section[#:style '(toc)]{Module namespace}
 @defmodule[rdf/core/namespace]
 
-This module provides types corresponding to a namespace identifier (IRI), as well as a namespaced-name, the tuple
-@tt{(namespace, local-name)}.
+This module provides types corresponding to a namespace identifier (IRI), as well as a namespaced name.
 
 @local-table-of-contents[]
 
@@ -657,6 +694,43 @@ Returns an @italic{empty} prefix name.
 ]
 }
 
+@defproc[(prefix+name->nsname
+          [prefix namespace-prefix?]
+          [name local-name-string?]
+          [map nsmap?])
+         nsname?]{
+Returns a new @racket[nsname] if the @racket[prefix] is in @racket[map], else @racket[#f].
+
+@examples[
+  #:eval example-eval
+  (let ((map (make-common-nsmap)))
+    (url->string
+     (nsname->url
+      (prefix+name->nsname
+       (string->prefix "dcterms:")
+       (string->local-name "description")
+       map))))
+]
+}
+
+@defproc[(prefix+name->url
+          [prefix namespace-prefix?]
+          [name local-name-string?]
+          [map nsmap?])
+         url-absolute?]{
+Returns a new @racket[url] if @racket[prefix] is in @racket[map], else @racket[#f].
+
+@examples[
+  #:eval example-eval
+  (let ((map (make-common-nsmap)))
+    (url->string
+     (prefix+name->url
+      (string->prefix "dcterms:")
+      (string->local-name "description")
+      map)))
+]
+}
+
 @;{============================================================================}
 @subsection[]{Prefixed Names}
 
@@ -710,17 +784,31 @@ TBD
 TBD
 }
 
-@defproc[(namespaced-name->prefixed-name
-          [map nsmap?]
-          [name nsname?])
+@defproc[(prefixed-name->nsname
+          [name prefixed-name?]
+          [nsmap nsmap?])
+         (or/c nsname? #f)]{
+See @racket[prefix+name->nsname].
+}
+
+@defproc[(prefixed-name->url
+          [name prefixed-name?]
+          [nsmap nsmap?])
+         (or/c url-absolute? #f)]{
+See @racket[prefix+name->url].
+}
+
+@defproc[(nsname->prefixed-name
+          [name nsname?]
+          [map nsmap?])
          prefixed-name?]{
 See @racket[namespace+name->prefixed-name].
 }
 
 @defproc[(namespace+name->prefixed-name
-          [map nsmap?]
           [ns namespace?]
-          [name local-name-string?])
+          [name local-name-string?]
+          [map nsmap?])
          prefixed-name?]{
 Returns a new @racket[prefixed-name] if @racket[ns] is in @racket[map], else @racket[#f].
 
@@ -729,60 +817,9 @@ Returns a new @racket[prefixed-name] if @racket[ns] is in @racket[map], else @ra
   (let ((map (make-common-nsmap)))
     (prefixed-name->string
      (namespace+name->prefixed-name
-      map
       (string->namespace "http://purl.org/dc/terms/")
-      (string->local-name "description"))))
-]
-}
-
-@defproc[(prefixed-name->nsname
-          [nsmap nsmap?]
-          [name prefixed-name?])
-         (or/c nsname? #f)]{
-See @racket[prefix+name->nsname].
-}
-
-@defproc[(prefix+name->nsname
-          [map nsmap?]
-          [prefix namespace-prefix?]
-          [name local-name-string?])
-         nsname?]{
-Returns a new @racket[nsname] if the @racket[prefix] is in @racket[map], else @racket[#f].
-
-@examples[
-  #:eval example-eval
-  (let ((map (make-common-nsmap)))
-    (url->string
-     (nsname->url
-      (prefix+name->nsname
-       map
-       (string->prefix "dcterms:")
-       (string->local-name "description")))))
-]
-}
-
-@defproc[(prefixed-name->url
-          [nsmap nsmap?]
-          [name prefixed-name?])
-         (or/c url-absolute? #f)]{
-See @racket[prefix+name->url].
-}
-
-@defproc[(prefix+name->url
-          [map nsmap?]
-          [prefix namespace-prefix?]
-          [name local-name-string?])
-         url-absolute?]{
-Returns a new @racket[url] if @racket[prefix] is in @racket[map], else @racket[#f].
-
-@examples[
-  #:eval example-eval
-  (let ((map (make-common-nsmap)))
-    (url->string
-     (prefix+name->url
-      map
-      (string->prefix "dcterms:")
-      (string->local-name "description"))))
+      (string->local-name "description")
+      map)))
 ]
 }
 
@@ -792,7 +829,7 @@ Returns a new @racket[url] if @racket[prefix] is in @racket[map], else @racket[#
 A namespace map is essential in serializing and deserializing RDF datasets, graphs, and statements.
 
 @defstruct*[nsmap ()]{
-This struct wraps a @racket[hash] between @racket[prefix] and @racket[namespace] values.
+This struct wraps a @racket[hash] between @racket[prefix?] and @racket[namespace?] values.
 }
 
 @defproc[#:kind "constructor"
@@ -812,77 +849,89 @@ Returns a new @racket[nsmap] containing the mappings in @racket[assocs].
          (nsmap-empty?
           [map nsmap?])
          boolean?]{
-TBD
+Returns @racket[#t] if @racket[map] contains no mapping values.
+
+@examples[
+#:eval example-eval
+(let ((map (make-nsmap)))
+  (iff (nsmap-empty? map) (= (nsmap-count map) 0)))
+]
 }
 
 @defproc[(nsmap-count
           [map nsmap?])
          exact-nonnegative-integer?]{
-TBD
+Returns the number of mapping values in @racket[map].
+
+@examples[
+#:eval example-eval
+(let ((map (make-common-nsmap)))
+  (iff (not (nsmap-empty? map)) (> (nsmap-count map) 0)))
+]
 }
 
 @;{============================================================================}
 
-@defproc[(nsmap-has-prefix?
-          [map nsmap?]
-          [prefix subject?])
-         boolean?]{
-TBD
-}
-
 @defproc[(nsmap-has-default?
           [map nsmap?])
          boolean?]{
-TBD
+Returns @racket[#t] iff the namespace @racket[map] contains a namespace value for the default prefix @tt{":"}.
 }
 
 @defproc[(nsmap-ref-default
           [map nsmap?])
-         (or/c url-absolute? #f)]{
-TBD
+         (or/c namespace? #f)]{
+Returns the @racket[namespace?] associated with the default prefix @tt{":"}, or @racket[#f] if none exists.
+}
+
+@defproc[(nsmap-has-prefix?
+          [map nsmap?]
+          [prefix prefix?])
+         boolean?]{
+Returns @racket[#t] iff the @racket[map] contains a namespace value for @racket[prefix].
 }
 
 @defproc[(nsmap-ref
           [map nsmap?]
-          [prefix ncname?])
-         (or/c url-absolute? #f)]{
-TBD
+          [prefix prefix?])
+         (or/c namespace? #f)]{
+Returns the @racket[namespace?] associated with @racket[prefix], or @racket[#f] if none exists.
 }
 
 @defproc[(nsmap-ref!
           [map nsmap?]
-          [prefix ncname?]
-          [to-set url-absolute?])
-         (or/c url-absolute? #f)]{
+          [prefix prefix?]
+          [to-set namespace?])
+         (or/c namespace? #f)]{
+TBD
+}
+
+@defproc[(nsmap-set-default!
+          [map nsmap?]
+          [url namespace?])
+         void?]{
 TBD
 }
 
 @defproc[(nsmap-set!
           [map nsmap?]
-          [prefix ncname?]
-          [url url-absolute?])
-         void?]{
-TBD
-}
-
-@defproc[(nsmap-set-from!
-          [map nsmap?]
-          [ns namespace?])
+          [prefix prefix?]
+          [url namespace?])
          void?]{
 TBD
 }
 
 @defproc[(nsmap-remove!
           [map nsmap?]
-          [prefix ncname?])
+          [prefix prefix?])
          void?]{
 TBD
 }
 
 @defproc[(nsmap-update!
           [map nsmap?]
-          [prefix ncname?]
-          [updater (-> url-absolute? url-absolute?)])
+          [prefix prefix?]
+          [updater (-> namespace? namespace)])
          boolean?]{
 TBD
 }
@@ -895,15 +944,15 @@ TBD
 
 @defproc[(nsmap-has-url?
           [map nsmap?]
-          [url url-absolute?])
+          [url namespace?])
          boolean?]{
 TBD
 }
 
 @defproc[(nsmap-prefix-ref
           [map nsmap?]
-          [url url-absolute?])
-         (or/c ncname? #f)]{
+          [url namespace?])
+         (or/c prefix? #f)]{
 TBD
 }
 
@@ -911,7 +960,7 @@ TBD
 
 @defproc[(nsmap-map
           [map nsmap?]
-          [proc (-> ncname? url-absolute? any/c)]
+          [proc (-> ncname? namespace? any/c)]
           [try-order? any/c #f])
          (listof any/c)]{
 TBD
@@ -920,21 +969,21 @@ TBD
 @defproc[(nsmap-names
           [map nsmap?]
           [try-order? any/c #f])
-         (listof ncname?)]{
+         (listof prefix?)]{
 TBD
 }
 
-@defproc[(nsmap-values
+@defproc[(nsmap-namespaces
           [map nsmap?]
           [try-order? any/c #f])
-         (listof url-absolute?)]{
+         (listof namespace?)]{
 TBD
 }
 
 @defproc[(nsmap->list
           [map nsmap?]
           [try-order? any/c #f])
-         (listof (cons/c ncname? url-absolute?))]{
+         (listof (cons/c prefix? namespace?))]{
 TBD
 }
 
@@ -1345,7 +1394,9 @@ TBD
 @section[#:style '(toc)]{Module graph}
 @defmodule[rdf/core/graph]
 
-Package Description Here
+A graph is a, possibly named, set of statements. While the RDF semantics define a graph as a @italic{set} of statements
+this implementation uses a list which provides for duplicate statements. At any time the @racket[graph->distinct-graph]
+function returns a version of the current graph with any duplicate statements removed.
 
 @local-table-of-contents[]
 
@@ -1408,19 +1459,25 @@ Return @racket[#t] if this graph contains no statements.
          (graph-has-duplicates?
           [val graph?])
          boolean?]{
-TBD
+Returns @racket[#t] if the graph has duplicate statements. 
 }
 
 @defproc[(graph-count
           [graph graph?])
          exact-positive-integer?]{
-Returns the number of statements in the graph.
+Returns the number of statements in the graph, this does not take into account whether there are duplicate statements.
 }
 
 @defproc[(graph-order
           [graph graph?])
          exact-positive-integer?]{
-Returns the @italic{order} of the graph, or the number of vertices.
+Returns the @italic{order} of the graph, or the number of vertices. For RDF a vertex is defined as any
+@racket[resource?] or @[blank-node?] in the graph.
+}
+
+@defproc[(graph->distinct-graph [graph graph?]) graph?]{
+Returns a new @racket[graph] where the list of statements in the source @racket[graph] have been removed. The name of
+the source is also preserved in the new copy.
 }
 
 @;{============================================================================}
@@ -1519,6 +1576,12 @@ Returns a copy of this graph with all statements removed. This does not affect t
 @;{============================================================================}
 @subsection[]{Graph Filters}
 
+@defproc[(graph-distinct-statements
+          [graph graph?])
+         (set/c statement?)]{
+TBD
+}
+
 @defproc[(graph-distinct-subjects
           [graph graph?])
          (set/c subject?)]{
@@ -1568,9 +1631,9 @@ TBD
 @;{============================================================================}
 @subsection[]{Graph Operations}
 
-Skolemization is the process of replacing all blank nodes in a graph with specially constructed URIs. This allows
+Skolemization is the process of replacing all blank nodes in a graph with specially constructed IRIs. This allows
 simpler graph processing in some cases as the processor only has to deal with one object identifier type. The
-constructed URIs follow the template below and this library uses UUIDs in string form as the unique identifier part.
+constructed IRIs follow the template below and this library uses UUIDs in string form as the unique identifier part.
 
 @nested[#:style 'code-inset]{
   @tt{"https://{{domain}}/.well-known/skolem/{{unique-id}}"}
@@ -1580,20 +1643,21 @@ constructed URIs follow the template below and this library uses UUIDs in string
           [graph graph?]
           [domain-name string? "example.com"])
          graph?]{
-Returns a new graph with all blank nodes in the original having been replaced with skolem URIs.
+Returns a new graph with all blank nodes in the original having been replaced with skolem IRIs.
 }
 
 @defproc[(graph-skolemize!
           [graph graph?]
           [domain-name string? "example.com"])
          graph?]{
-TBD
+The same as @racket[graph-skolemize] but performs the change to @racket[graph] directly and therefore the returned
+graph is the same object as the graph passed in as the source.
 }
 
 @defproc[(skolem-url?
           [url url?])
          boolean?]{
-TBD
+Returns @racket[#t] is a skolem IRI using the well-known path in the template above.
 }
 
 @;{----------------------------------------------------------------------------}
@@ -1602,7 +1666,8 @@ TBD
           [graph graph?]
           [subject subject? #f])
          statement-list?]{
-TBD
+Returns a list of statements that correspond to a basic description of the graph using both the SPARQL service
+description and VOID vocabularies.
 }
 
 @;{----------------------------------------------------------------------------}
@@ -1945,7 +2010,8 @@ TBD
 @section[#:style '(toc)]{Module io}
 @defmodule[rdf/core/io]
 
-Package Description Here
+This package provides very basic capabilities for writing out RDF values useful for testing but incomplete in many
+regards.
 
 @defthing[import-style/c flat-contract?]{TBD}
 
@@ -2326,22 +2392,22 @@ Add this namespace, and preferred prefix, to the namespace map @racket[map].
 
 @subsubsection[#:style '(non-toc)]{RDF Datatypes}
 
-@defthing[rdf:lang-String nsname?]{The @racket[nsname?] structure corresponding to the property @tt{rdf:langString}.}
+@defthing[rdf:HTML nsname?]{The @racket[nsname?] structure corresponding to the datatype @tt{rdf:HTML}.}
+@defthing[rdf:langString nsname?]{The @racket[nsname?] structure corresponding to the datatype @tt{rdf:langString}.}
+@defthing[rdf:XMLLiteral nsname?]{The @racket[nsname?] structure corresponding to the datatype @tt{rdf:XMLLiteral}.}
 
 @subsubsection[#:style '(non-toc)]{RDF Classes}
 
 @defthing[rdf:Alt nsname?]{The @racket[nsname?] structure corresponding to the class @tt{rdf:Alt}.}
 @defthing[rdf:Bag nsname?]{The @racket[nsname?] structure corresponding to the class @tt{rdf:Bag}.}
-@defthing[rdf:HTML nsname?]{The @racket[nsname?] structure corresponding to the class @tt{rdf:HTML}.}
 @defthing[rdf:List nsname?]{The @racket[nsname?] structure corresponding to the class @tt{rdf:List}.}
 @defthing[rdf:Property nsname?]{The @racket[nsname?] structure corresponding to the class @tt{rdf:Property}.}
 @defthing[rdf:Seq nsname?]{The @racket[nsname?] structure corresponding to the class @tt{rdf:Seq}.}
 @defthing[rdf:Statement nsname?]{The @racket[nsname?] structure corresponding to the class @tt{rdf:Statement}.}
-@defthing[rdf:XMLLiteral nsname?]{The @racket[nsname?] structure corresponding to the class @tt{rdf:XMLLiteral}.}
 
 @subsubsection[#:style '(non-toc)]{RDF Properties}
 
-@defthing[frdf:irst nsname?]{The @racket[nsname?] structure corresponding to the property @tt{rdf:first}.}
+@defthing[fdf:first nsname?]{The @racket[nsname?] structure corresponding to the property @tt{rdf:first}.}
 @defthing[rdf:nil nsname?]{The @racket[nsname?] structure corresponding to the property @tt{rdf:nil}.}
 @defthing[rdf:object nsname?]{The @racket[nsname?] structure corresponding to the property @tt{rdf:object}.}
 @defthing[rdf:predicate nsname?]{The @racket[nsname?] structure corresponding to the property @tt{rdf:predicate}.}
@@ -2642,7 +2708,7 @@ module, as shown below.
 ;; Namespace definition
 ;; ==============================================================
 
-(define ex: 
+(define ex:
   (make-namespace "http://example.org/schema/example#"
                   "ex"))
 
@@ -2653,7 +2719,7 @@ module, as shown below.
 }
 
 A more complete example specifies a name, description, a specification URI and date, as well as two member names to be
-added to the namespace. 
+added to the namespace.
 
 @nested[#:style 'code-inset]{
 @verbatim|{
@@ -2670,7 +2736,7 @@ added to the namespace.
 ;; Name: An example namespace
 ;;
 ;; Using the IETF example domain name, example.org, this adds a
-;; simple path which can be used to document RDF tools. 
+;; simple path which can be used to document RDF tools.
 ;;
 ;; Specification URI: https://www.rfc-editor.org/rfc/rfc2606.html
 ;;
@@ -2689,7 +2755,7 @@ added to the namespace.
 ;; Namespace definition
 ;; ==============================================================
 
-(define ex: 
+(define ex:
   (make-namespace "http://example.org/schema/example#"
                   "ex"))
 

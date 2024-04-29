@@ -64,7 +64,7 @@
   (internal-make-literal form datatype #f))
 
 (define (make-lang-string-literal form language)
-  (internal-make-literal form (nsname->url rdf:lang-String) language))
+  (internal-make-literal form (nsname->url rdf:langString) language))
 
 ;; ------------------------------------------------------------------------------------------------
 ;; Literal predicates

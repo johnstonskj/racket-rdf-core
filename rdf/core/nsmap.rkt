@@ -23,6 +23,10 @@
           (string->prefix (-> (or/c prefix-string? prefix-name-string?) prefix?))
           (empty-prefix  (-> prefix?))
           (prefix->string (-> prefix? prefix-string?))
+          (prefix+name->nsname
+           (-> prefix? local-name? nsmap? (or/c nsname? #f)))
+          (prefix+name->url
+           (-> prefix? local-name? nsmap? (or/c url-absolute? #f)))
           ;; --------------------------------------
           (prefixed-name-separator char?)
           (prefixed-name-string? (-> any/c boolean?))
@@ -33,22 +37,18 @@
                (or/c local-name-string? local-name?) prefixed-name?))
           (string->prefixed-name (-> prefixed-name-string? (or/c prefixed-name? #f)))
           (prefixed-name->string (-> prefixed-name? prefixed-name-string?))
-          (namespaced-name->prefixed-name
-           (-> nsmap? nsname? (or/c prefixed-name? #f)))
+          (nsname->prefixed-name
+           (-> nsname? nsmap? (or/c prefixed-name? #f)))
           (namespace+name->prefixed-name
-           (-> nsmap? namespace? local-name? (or/c prefixed-name? #f)))
+           (-> namespace? local-name? nsmap? (or/c prefixed-name? #f)))
           (prefixed-name->nsname
-           (-> nsmap? local-name? (or/c nsname? #f)))
-          (prefix+name->nsname
-           (-> nsmap? prefix? local-name? (or/c nsname? #f)))
+           (-> prefixed-name? nsmap? (or/c nsname? #f)))
           (prefixed-name->url
-           (-> nsmap? local-name? (or/c url-absolute? #f)))
-          (prefix+name->url
-           (-> nsmap? prefix? local-name? (or/c url-absolute? #f)))
+           (-> prefixed-name? nsmap? (or/c url-absolute? #f)))
           ;; --------------------------------------
           ;; --------------------------------------
           (struct nsmap ((mapping (hash/c (or/c prefix? #f) namespace?))))
-          (make-common-nsmap (-> nsmap?))
+          (make-common-nsmap (-> nsmap?))5;75;35M
           (make-nsmap (->* () ((listof (cons/c prefix? namespace?))) nsmap?))
           (nsmap-empty?  (-> nsmap? boolean?))
           (nsmap-count (-> nsmap? exact-nonnegative-integer?))
@@ -58,6 +58,7 @@
           (nsmap-ref-default  (-> nsmap? (or/c namespace? #f)))
           (nsmap-ref! (-> nsmap? prefix? namespace? namespace?))
           (nsmap-set! (-> nsmap? prefix? namespace? void?))
+          (nsmap-set-default! (-> nsmap? namespace? void?))
           (nsmap-remove! (-> nsmap? prefix? void?))
           (nsmap-update! (-> nsmap? prefix? (-> namespace? namespace?) void?))
           (nsmap-clear! (-> nsmap? void?))
@@ -83,19 +84,26 @@
   #:transparent
   #:guard (struct-guard/c prefix-string?))
 
-(define (prefix-empty? nsprefix)
-  (string=? (prefix-str nsprefix) empty-prefix-string))
+(define (empty-prefix)
+  (prefix empty-prefix-string))
 
 (define (string->prefix str)
   (prefix (if (prefix-name-string? str)
               (string-append str empty-prefix-string)
               str)))
 
-(define (empty-prefix)
-  (prefix empty-prefix-string))
+(define (prefix-empty? nsprefix)
+  (string=? (prefix-str nsprefix) empty-prefix-string))
 
 (define (prefix->string nsprefix)
   (prefix-str nsprefix))
+
+(define (prefix+name->nsname prefix name nsmap)
+  (let ((ns (nsmap-ref nsmap prefix)))
+    (if ns (make-nsname ns name) #f)))
+
+(define (prefix+name->url prefix name nsmap)
+  (nsname->url (prefix+name->nsname prefix name nsmap)))
 
 ;; -------------------------------------------------------------------------------------------------
 ;; Prefixed Names
@@ -122,30 +130,22 @@
          (string->local-name (cdr namespace+name)))
         #f)))
 
-(define (prefixed-name->string name)
-  (string-append (prefix->string (prefixed-name-prefix name))
-                 (local-name->string (prefixed-name-name name))))
+(define (prefixed-name->string pname)
+  (string-append (prefix->string (prefixed-name-prefix pname))
+                 (local-name->string (prefixed-name-name pname))))
 
-(define (prefixed-name->nsname nsmap name)
-  (prefix+name->nsname nsmap (prefixed-name-prefix name) (prefixed-name-name name)))
+(define (prefixed-name->nsname pname nsmap)
+  (prefix+name->nsname nsmap (prefixed-name-prefix pname) (prefixed-name-name pname)))
 
-(define (prefix+name->nsname nsmap prefix name)
-  (let ((ns (nsmap-ref nsmap prefix)))
-    (if ns (make-nsname ns name) #f)))
+(define (prefixed-name->url pname nsmap)
+  (prefix+name->url nsmap (prefixed-name-prefix pname) (prefixed-name-name pname)))
 
-(define (prefixed-name->url nsmap name)
-  (prefix+name->url nsmap (prefixed-name-prefix name) (prefixed-name-name name)))
-
-(define (prefix+name->url nsmap prefix name)
-  (let ((ns (nsmap-ref nsmap prefix)))
-    (if ns (namespace+name->url ns name) #f)))
-
-(define (namespaced-name->prefixed-name nsmap nsname)
+(define (nsname->prefixed-name nsname nsmap)
   (namespace+name->prefixed-name nsmap
                                  (nsname-namespace nsname)
                                  (nsname-name nsname)))
 
-(define (namespace+name->prefixed-name nsmap ns name)
+(define (namespace+name->prefixed-name ns name nsmap)
   (let ((prefix (nsmap-prefix-ref nsmap ns)))
     (if prefix (make-prefixed-name prefix name) #f)))
 
@@ -183,14 +183,14 @@
 
 ;; -------------------------------------------------------------------------------------------------
 
-(define (nsmap-has-prefix? map prefix)
-  (hash-has-key? (nsmap-mapping map) prefix))
-
 (define (nsmap-has-default? map)
-  (hash-has-key? (nsmap-mapping map) #f))
+  (nsmap-has-prefix? map (empty-prefix)))
 
 (define (nsmap-ref-default map)
-  (hash-ref (nsmap-mapping map) #f #f))
+  (nsmap-ref map (empty-prefix)))
+
+(define (nsmap-has-prefix? map prefix)
+  (hash-has-key? (nsmap-mapping map) prefix))
 
 (define (nsmap-ref map prefix)
   (hash-ref (nsmap-mapping map) prefix #f))
@@ -200,6 +200,9 @@
 
 (define (nsmap-set! map prefix url)
   (hash-set! (nsmap-mapping map) prefix url))
+
+(define (nsmap-set-default! map url)
+  (nsmap-set! map (empty-prefix) url))
 
 (define (nsmap-remove! map prefix)
   (hash-remove! (nsmap-mapping map) prefix))
