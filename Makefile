@@ -153,6 +153,6 @@ $(HTMLDOCOUTDIR)/%.svg: $(SCRBLDIR)/%.svg | $(HTMLDOCOUTDIR)
 .PHONY: clean
 
 clean:
-	fd . -name compiled -type d | xargs rm -rf
+	find . -name compiled -type d | xargs rm -rf
 	rm -rf $(BUILDOUTDIR)
 	rm -rf $(COLLECTS)/doc
