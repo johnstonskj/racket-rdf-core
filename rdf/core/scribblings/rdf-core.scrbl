@@ -852,8 +852,6 @@ Returns a new @racket[nsmap] containing mappings for commonly used namespaces.
 Returns a new @racket[nsmap] containing the mappings in @racket[assocs].
 }
 
-@;; TODO: add  make-rdf-only-nsmap
-
 @defproc[#:kind "predicate"
          (nsmap-empty?
           [map nsmap?])
@@ -1187,19 +1185,31 @@ with predicates and structures of their own.
 A blank node is used as either a subject or object in a graph that is able to link statements where no resource
 represents the concept.
 
+@defproc[#:kind "predicate"
+         (blank-node-string?
+          [val any/c])
+         boolean?]{
+TBD
+}
+
+@defproc[#:kind "predicate"
+         (blank-node-label-string?
+          [val any/c])
+         boolean?]{
+TBD
+}
+
 @defstruct*[blank-node () #:omit-constructor]{
 This struct wraps a single @italic{label} value of type @racket[local-name?].
 }
 
-@;; TODO: add blank-node-string?
-@;; TODO: add blank-node-label-string?
-@;; TODO: add constructor value
-
 @defproc[#:kind "constructor"
-         (make-blank-node)
+         (make-blank-node
+          [label (or/c blank-node-label-string? #f) #f ])
          blank-node?]{
-Returns a new blank node with a unique label. The current implementation guarantees that it will generate new unique
-identifiers within the same process, two processes running separately may generate overlapping identifiers.
+Returns a new blank node with either the provided @racket[label], or a uniquely assigned label. The current
+implementation guarantees that it will generate new unique identifiers within the same process, two processes
+running separately may generate overlapping identifiers.
 }
 
 @defproc[(blank-node->string
@@ -1676,8 +1686,21 @@ Returns @racket[#t] is a skolem IRI using the well-known path in the template ab
 
 @;{----------------------------------------------------------------------------}
 
-@;; TODO: add graph->tree
-@;; TODO: add statement-list->tree
+@defthing[graph-tree/c contract?]{
+TBD
+}
+
+@defproc[(graph->tree
+          [graph graph?])
+         graph-tree/c]{
+TBD
+}
+
+@defproc[(statement-list->tree
+          [statements statement-list?])
+         graph-tree/c]{
+TBD
+}
 
 @;{----------------------------------------------------------------------------}
 
@@ -1756,7 +1779,12 @@ TBD
 TBD
 }
 
-@;; TODO: add graph-list->dataset
+@defproc[#:kind "constructor"
+         (graph-list->dataset
+          [graphs (listof graph?)])
+         dataset?]{
+TBD
+}
 
 @;{============================================================================}
 @subsection[]{Dataset Predicates & Properties}
@@ -1967,6 +1995,16 @@ TBD
 
 @defproc[#:kind "predicate"
          (comparitor? [val any/c]) boolean?]{
+TBD
+}
+
+@defproc[#:kind "predicate"
+         (variable-string? [val any/c]) boolean?]{
+TBD
+}
+
+@defproc[#:kind "predicate"
+         (variable-name-string? [val any/c]) boolean?]{
 TBD
 }
 
