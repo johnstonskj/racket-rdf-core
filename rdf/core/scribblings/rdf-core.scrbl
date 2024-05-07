@@ -66,7 +66,7 @@ V
 
 @;{============================================================================}
 
-@title[#:version  "0.1.0"]{RDF Core Data Model}
+@title[#:version  "0.1.1"]{RDF Core Data Model}
 @author[(author+email "Simon Johnston" "johnstonskj@gmail.com")]
 
 This is the core data model for the Resource Description Framework (RDF) @cite["RDF11CAS"] in Racket. It also includes
