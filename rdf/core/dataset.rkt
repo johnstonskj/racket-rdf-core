@@ -15,6 +15,7 @@
                            (graphs (hash/c graph-name? graph?))))
           (named-dataset (-> resource? (hash/c graph-name? graph?) dataset?))
           (unnamed-dataset (-> (hash/c graph-name? graph?) dataset?))
+          (graph-list->dataset (-> (listof graph?) dataset?))
           (dataset-empty? (-> dataset? boolean?))
           (dataset-count (-> dataset? exact-nonnegative-integer?))
           (dataset-has-named? (-> dataset? subject? boolean?))
@@ -50,6 +51,9 @@
 
 (define (named-dataset name graphs)
   (dataset name graphs))
+
+(define (graph-list->dataset lst)
+  (dataset #f (make-hash (map (λ (graph) (cons (graph-name graph) graph)) lst))))
 
 (define (dataset-empty? ds)
   (hash-empty? (dataset-graphs ds)))
