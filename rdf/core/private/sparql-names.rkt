@@ -9,6 +9,7 @@
          "./strings.rkt")
 
 (provide prefixed-name-separator
+         blank-node-prefix
          ;; --------------------------------------
          (contract-out
           (prefix-string? (-> any/c boolean?))
@@ -19,7 +20,9 @@
           (prefixed-name-string? (-> any/c boolean?))
           (prefixed-name-split
            (-> prefixed-name-string?
-               (or/c (cons/c prefix-string? (or/c local-name-string? #f)) #f)))))
+               (or/c (cons/c prefix-string? (or/c local-name-string? #f)) #f)))
+          (blank-node-string? (-> any/c boolean?))
+          (blank-node-label-string? (-> any/c boolean?))))
 
 ;; -------------------------------------------------------------------------------------------------
 
@@ -42,6 +45,20 @@
 
 (define (prefixed-name-string? v)
   (and (non-empty-string? v) (prefixed-name? v)))
+
+(define blank-node-prefix "_:")
+
+(define (blank-node-string? v)
+  (and (string? v) (string-prefix? v blank-node-prefix) (pn-local? (substring v 2))))
+
+(define (blank-node-label-string? v)
+  (and (non-empty-string? v) (pn-local? v)))
+
+;; -------------------------------------------------------------------------------------------------
+;; -------------------------------------------------------------------------------------------------
+
+;; [69]  	BlankNode	  ::=  	BLANK_NODE_LABEL | ANON
+;; [73]  	BLANK_NODE_LABEL	  ::=  	'_:' PN_LOCAL
 
 ;; -------------------------------------------------------------------------------------------------
 ;; -------------------------------------------------------------------------------------------------
