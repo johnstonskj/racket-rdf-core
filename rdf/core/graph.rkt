@@ -3,6 +3,7 @@
 (require (for-syntax racket/base)
          racket/bool
          racket/contract
+         racket/function
          racket/list
          racket/set
          racket/string
@@ -50,16 +51,19 @@
          graph-filter-by-predicate
          graph-filter-by-object
          ;; --------------------------------------
-         graph-skolemize
-         graph-skolemize!
-         skolem-url?
-         ;; --------------------------------------
          graph-index-kind/c
          graph-has-index?
          graph-indexes
          graph-index
          graph-index-create
          graph-index-drop
+         ;; --------------------------------------
+         graph-skolemize
+         graph-skolemize!
+         skolem-url?
+         ;; --------------------------------------
+         graph->tree
+         statement-list->tree
          ;; --------------------------------------
          describe-graph
          ;; --------------------------------------
@@ -82,17 +86,17 @@
 
 (define graph-name? (or/c #f subject?))
 
-(struct graph (name (statements #:mutable) indices)
+(struct graph (name (statements #:mutable) asserted indices)
   #:transparent
   #:constructor-name internal-make-graph
-  #:guard (struct-guard/c graph-name? statement-list? (hash/c graph-index-kind/c graph-index/c)))
+  #:guard (struct-guard/c graph-name? statement-list? boolean? (hash/c graph-index-kind/c graph-index/c)))
 
 (define (unnamed-graph statements)
-  (internal-make-graph #f statements (make-hash)))
+  (internal-make-graph #f statements #t (make-hash)))
 
 (define (named-graph name statements)
   (when (url? name)
-   (internal-make-graph name statements (make-hash))))
+   (internal-make-graph name statements #t (make-hash))))
 
 (define (graph-name-or-blank graph)
   (if (graph-named? graph)
@@ -345,6 +349,32 @@
         (triple graph-node void:distinct-subjects (count (graph-distinct-subjects graph)))
         (triple graph-node void:properties (count (graph-distinct-predicates graph)))
         (triple graph-node void:distinct-objects (count (graph-distinct-objects graph))))))))
+
+;; -------------------------------------------------------------------------------------------------
+;; Make tree
+;; -------------------------------------------------------------------------------------------------
+
+(define (tree-add-statement root statement)
+  (let ((branch (hash-ref root (get-subject statement) #f)))
+    (if branch
+        (let ((twig (hash-ref branch (get-predicate statement) #f)))
+          (hash-set! branch
+                     (get-predicate statement)
+                     (if twig
+                         (cons (get-object statement) twig)
+                         (list (get-object statement)))))
+        (hash-set! root (get-subject statement)
+                   (make-hash (list
+                               (cons (get-predicate statement)
+                                     (list (get-object statement)))))))))
+
+(define (statement-list->tree statement-list)
+  (let ((root (make-hash)))
+    (for-each (curry tree-add-statement root) statement-list)
+    root))
+
+(define (graph->tree graph)
+  (statement-list->tree (graph-statements graph)))
 
 ;; -------------------------------------------------------------------------------------------------
 ;; Macros
