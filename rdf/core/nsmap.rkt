@@ -23,6 +23,7 @@
           (string->prefix (-> (or/c prefix-string? prefix-name-string?) prefix?))
           (empty-prefix  (-> prefix?))
           (prefix->string (-> prefix? prefix-string?))
+          (prefix->name-string (-> prefix? prefix-name-string?))
           (prefix+name->nsname
            (-> prefix? local-name? nsmap? (or/c nsname? #f)))
           (prefix+name->url
@@ -49,6 +50,7 @@
           ;; --------------------------------------
           (struct nsmap ((mapping (hash/c (or/c prefix? #f) namespace?))))
           (make-common-nsmap (-> nsmap?))
+          (make-rdf-only-nsmap (-> nsmap?))
           (make-nsmap (->* () ((listof (cons/c prefix? namespace?))) nsmap?))
           (nsmap-empty?  (-> nsmap? boolean?))
           (nsmap-count (-> nsmap? exact-nonnegative-integer?))
@@ -97,6 +99,10 @@
 
 (define (prefix->string nsprefix)
   (prefix-str nsprefix))
+
+(define (prefix->name-string nsprefix)
+  (let ((prestr (prefix-str nsprefix)))
+    (substring prestr 0 (- (string-length prestr) 1))))
 
 (define (prefix+name->nsname prefix name nsmap)
   (let ((ns (nsmap-ref nsmap prefix)))
@@ -174,6 +180,11 @@
                (string->namespace "http://purl.org/dc/elements/1.1/"))
          (cons (string->prefix "dcterms")
                (string->namespace "http://purl.org/dc/terms/")))))
+
+(define (make-rdf-only-nsmap)
+  (make-nsmap
+   (list (cons (string->prefix "rdf:")
+               (string->namespace "http://www.w3.org/1999/02/22-rdf-syntax-ns#")))))
 
 (define (nsmap-empty? map)
   (hash-empty? (nsmap-mapping map)))
