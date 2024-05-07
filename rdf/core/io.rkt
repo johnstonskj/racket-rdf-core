@@ -3,6 +3,7 @@
 (require (for-syntax racket/base racket/syntax)
          racket/bool
          racket/contract
+         racket/function
          racket/list
          racket/port
          ;; --------------------------------------
@@ -42,7 +43,11 @@
          graph->ntriple-string
          write-nquad-graph
          graph->nquad-string
+         write-trig-graph
+         graph->trig-string
          ;; --------------------------------------
+         write-nquad-dataset
+         dataset->nquad-string
          write-trig-dataset
          dataset->trig-string
          ;; --------------------------------------
@@ -188,6 +193,17 @@
 
 (writer->to-string graph nquad)
 
+(define/contract (write-trig-graph graph (out (current-output-port)))
+  (->* (graph?) (output-port?) void?)
+  (when (graph-named? graph)
+    (write-ntriple-subject (graph-name graph) out)
+    (displayln " " out))
+  (displayln "{" out)
+  (write-ntriple-graph graph out)
+  (displayln "}" out))
+
+(writer->to-string graph trig)
+
 ;; -------------------------------------------------------------------------------------------------
 ;; Printing data sets
 ;; -------------------------------------------------------------------------------------------------
@@ -195,15 +211,17 @@
 (define/contract (write-trig-dataset dataset (out (current-output-port)))
   (->* (dataset?) (output-port?) void?)
   (for-each
-   (λ (graph)
-     (if (graph-named? graph)
-         (fprintf out "~a {~n" (write-ntriple-subject (graph-name graph) out))
-         (displayln "{" out))
-     (write-ntriple-graph graph out)
-     (displayln "}" out))
+   (curryr write-trig-graph out)
    (dataset-graphs dataset)))
 
 (writer->to-string dataset trig)
+
+(define/contract (write-nquad-dataset dataset (out (current-output-port)))
+  (->* (dataset?) (output-port?) void?)
+  (for-each (λ (graph) (write-nquad-graph graph out))
+            (dataset-graphs dataset)))
+
+(writer->to-string dataset nquad)
 
 ;; -------------------------------------------------------------------------------------------------
 ;; Printing statement patterns
