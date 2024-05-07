@@ -19,6 +19,7 @@
         (list "string" (string->url "ttp://www.w3.org/2000/10/swap/string#"))
         (list "time" (string->url "http://www.w3.org/2000/10/swap/time#"))
         ;; Annotation/Metadata Vocabularies
+
         (list "skos" (string->url "http://www.w3.org/2004/02/skos/core#"))
         ;; Domain Vocabularies
         (list "biblio" (string->url "http://purl.org/net/biblio#>"))
