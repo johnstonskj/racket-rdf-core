@@ -1,7 +1,7 @@
 #lang info
 (define name "rdf-core")
-(define deps '("base" "langtag" "rx" "uuid"))
-(define build-deps '("scribble-lib" "sandbox-lib" "racket-doc" "rackunit-lib"))
+;;(define deps '("base" "langtag" "rx" "uuid"))
+;;(define build-deps '("scribble-lib" "sandbox-lib" "racket-doc" "rackunit-lib"))
 (define scribblings '(("scribblings/rdf-core.scrbl" (multi-page) (library))))
 (define test-omit-paths '("scribblings"))
 (define pkg-desc "The RDF data model: resources, statements, graphs, and datasets.")
