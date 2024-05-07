@@ -16,6 +16,7 @@
           rdf/core/io
           (for-label langtag
                      racket/contract
+                     net/url-structs
                      rdf/core/name
                      rdf/core/namespace
                      rdf/core/nsmap
@@ -833,6 +834,12 @@ This struct wraps a @racket[hash] between @racket[prefix?] and @racket[namespace
 }
 
 @defproc[#:kind "constructor"
+         (make-rdf-only-nsmap)
+         nsmap?]{
+Returns a new @racket[nsmap] containing a mapping for the RDF namespace only.
+}
+
+@defproc[#:kind "constructor"
          (make-common-nsmap)
          nsmap?]{
 Returns a new @racket[nsmap] containing mappings for commonly used namespaces.
@@ -844,6 +851,8 @@ Returns a new @racket[nsmap] containing mappings for commonly used namespaces.
          nsmap?]{
 Returns a new @racket[nsmap] containing the mappings in @racket[assocs].
 }
+
+@;; TODO: add  make-rdf-only-nsmap
 
 @defproc[#:kind "predicate"
          (nsmap-empty?
@@ -1182,6 +1191,10 @@ represents the concept.
 This struct wraps a single @italic{label} value of type @racket[local-name?].
 }
 
+@;; TODO: add blank-node-string?
+@;; TODO: add blank-node-label-string?
+@;; TODO: add constructor value
+
 @defproc[#:kind "constructor"
          (make-blank-node)
          blank-node?]{
@@ -1351,7 +1364,7 @@ See @racket[reify].
 TBD
 }
 
-@defproc[(make-anon-statement-list
+@defproc[(anon-statement-list
           [predicate-object-list (listof (list/c predicate? (or/c object? (listof object?))))])
          (listof triple?)]{
 TBD
@@ -1660,6 +1673,12 @@ graph is the same object as the graph passed in as the source.
 Returns @racket[#t] is a skolem IRI using the well-known path in the template above.
 }
 
+
+@;{----------------------------------------------------------------------------}
+
+@;; TODO: add graph->tree
+@;; TODO: add statement-list->tree
+
 @;{----------------------------------------------------------------------------}
 
 @defproc[(describe-graph
@@ -1736,6 +1755,8 @@ TBD
          dataset?]{
 TBD
 }
+
+@;; TODO: add graph-list->dataset
 
 @;{============================================================================}
 @subsection[]{Dataset Predicates & Properties}
