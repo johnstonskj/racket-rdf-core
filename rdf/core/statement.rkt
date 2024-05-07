@@ -18,7 +18,7 @@
           (blank-node-string? (-> any/c boolean?))
           (blank-node-label-string? (-> any/c boolean?))
           (blank-node? (-> any/c boolean?))
-          (make-blank-node (->* () (blank-node-label-string?) blank-node?))
+          (make-blank-node (->* () ((or/c blank-node-label-string? #f)) blank-node?))
           (blank-node->string (-> blank-node? local-name-string?))
           ;; --------------------------------------
           (resource? (-> any/c boolean?))
@@ -55,8 +55,8 @@
   #:transparent
   #:constructor-name internal-make-blank-node)
 
-(define (make-blank-node (label (make-blank-node-label)))
-  (internal-make-blank-node label))
+(define (make-blank-node (label #f))
+  (internal-make-blank-node (if label label (make-blank-node-label))))
 
 (define (blank-node->string blank)
   (blank-node-label blank))
