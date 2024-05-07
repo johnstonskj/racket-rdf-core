@@ -5,13 +5,17 @@
          racket/list
          "./statement.rkt"
          "./graph.rkt"
-         "./private/sparql-names.rkt")
+         (only-in "./private/sparql-names.rkt"
+                  variable-string?
+                  variable-name-string?))
 
 (provide pattern-component?
          ignore
          ignore?
          comparitor
          comparitor?
+         variable-string?
+         variable-name-string?
          variable
          variable?
          ;; --------------------------------------
