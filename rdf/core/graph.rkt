@@ -62,6 +62,7 @@
          graph-skolemize!
          skolem-url?
          ;; --------------------------------------
+         graph-tree/c
          graph->tree
          statement-list->tree
          ;; --------------------------------------
@@ -330,6 +331,8 @@
 ;; -------------------------------------------------------------------------------------------------
 ;; Describe
 ;; -------------------------------------------------------------------------------------------------
+
+(define graph-tree/c (hash/c subject? (hash/c predicate? (listof object?))))
 
 (define/contract (describe-graph graph (subject #f))
   (->* (graph?) ((or/c subject? #f)) statement-list?)
