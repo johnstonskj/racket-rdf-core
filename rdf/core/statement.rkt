@@ -6,13 +6,19 @@
          "./literal.rkt"
          (only-in "./name.rkt" local-name-string?)
          "./namespace.rkt"
-         "./v/rdf.rkt")
+         "./v/rdf.rkt"
+         ;; --------------------------------------
+         (only-in "./private/sparql-names.rkt"
+                  blank-node-string?
+                  blank-node-label-string?))
 
 (provide gen:statement
          (rename-out (new-statement/c statement/c))
          (contract-out
+          (blank-node-string? (-> any/c boolean?))
+          (blank-node-label-string? (-> any/c boolean?))
           (blank-node? (-> any/c boolean?))
-          (make-blank-node (-> blank-node?))
+          (make-blank-node (->* () (blank-node-label-string?) blank-node?))
           (blank-node->string (-> blank-node? local-name-string?))
           ;; --------------------------------------
           (resource? (-> any/c boolean?))
@@ -39,21 +45,21 @@
 (define shared-blank-node-sem (make-semaphore 1))
 
 (define (make-blank-node-label)
-  (semaphore-wait shared-blank-node-sem)
-  (let ((next-label shared-blank-node-counter))
-    (set! shared-blank-node-counter (add1 next-label))
-    (semaphore-post shared-blank-node-sem)
-    next-label))
+  (call-with-semaphore
+   shared-blank-node-sem
+   (λ () (let ((next-label shared-blank-node-counter))
+           (set! shared-blank-node-counter (add1 next-label))
+           (format "B~X"next-label)))))
 
 (struct blank-node (label)
   #:transparent
   #:constructor-name internal-make-blank-node)
 
-(define (make-blank-node)
-  (internal-make-blank-node (make-blank-node-label)))
+(define (make-blank-node (label (make-blank-node-label)))
+  (internal-make-blank-node label))
 
 (define (blank-node->string blank)
-  (format "B~X" (blank-node-label blank)))
+  (blank-node-label blank))
 
 ;; -------------------------------------------------------------------------------------------------
 ;; Predicates
