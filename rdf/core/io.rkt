@@ -35,7 +35,7 @@
          object->ntriple-string
          ;; --------------------------------------
          write-ntriple-statement
-          statement->ntriple-string
+         statement->ntriple-string
          write-nquad-statement
          statement->nquad-string
          ;; --------------------------------------
@@ -103,7 +103,7 @@
 
 (define/contract (write-ntriple-blank-node val (out (current-output-port)))
   (->* (blank-node?) (output-port?) void?)
-  (fprintf out "_:B~a" (blank-node->string val)))
+  (fprintf out "_:~a" (blank-node->string val)))
 
 (writer->to-string blank-node ntriple)
 
