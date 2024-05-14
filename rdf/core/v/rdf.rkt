@@ -90,3 +90,48 @@
 
 (define rdf:value
   (make-nsname rdf: (string->local-name "value")))
+
+;; ================================================================================================
+;; RDF/XML Additions
+;; ================================================================================================
+
+(define rdf:RDF
+  (make-nsname rdf: (string->local-name "RDF")))
+
+(define rdf:Description
+  (make-nsname rdf: (string->local-name "Description")))
+
+(define rdf:about
+  (make-nsname rdf: (string->local-name "about")))
+
+(define rdf:aboutEach
+  (make-nsname rdf: (string->local-name "aboutEach")))
+
+(define rdf:aboutEachPrefix
+  (make-nsname rdf: (string->local-name "aboutEachPrefix")))
+
+(define rdf:bagID
+  (make-nsname rdf: (string->local-name "bagID")))
+
+(define rdf:datatype
+  (make-nsname rdf: (string->local-name "datatype")))
+
+(define rdf:ID
+  (make-nsname rdf: (string->local-name "ID")))
+
+(define rdf:li
+  (make-nsname rdf: (string->local-name "li")))
+
+(define (rdf:_ n)
+  ((make-nsname rdf: (string->local-name (format "_~a" n)))))
+
+(define rdf:nodeID
+  (make-nsname rdf: (string->local-name "nodeID")))
+
+(define rdf:parseType
+  (make-nsname rdf: (string->local-name "parseType")))
+
+(define rdf:resource
+  (make-nsname rdf: (string->local-name "resource")))
+
+
