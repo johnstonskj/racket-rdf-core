@@ -11,12 +11,13 @@
 
 (require (only-in "../name.rkt"
                   string->local-name)
-         (only-in "../namespace.rkt"
-                  string->namespace
-                  make-nsname)
          (only-in "../nsmap.rkt"
                   string->prefix
-                  nsmap-set!))
+                  nsmap-set!)
+         (only-in "../nsname.rkt"
+                  make-nsname)
+         (only-in "../resource.rkt"
+                  string->resource))
 
 (provide (all-defined-out))
 
@@ -27,12 +28,12 @@
 (define xsi-prefix-string "xsi")
 (define xsi-namespace-string "http://www.w3.org/2001/XMLSchema-instance#")
 
-(define xsi: (string->namespace xsi-namespace-string))
+(define xsi: (string->resource xsi-namespace-string))
 
 (define (nsmap-add-xsi map)
   (nsmap-set! map
               (string->prefix xsi-prefix-string)
-              (string->namespace xsi-namespace-string)))
+              (string->resource xsi-namespace-string)))
 
 ;; ================================================================================================
 ;; Name definitions
@@ -42,7 +43,7 @@
   (make-nsname xsi: (string->local-name "type")))
 
 (define xsi:nil
-  (make-nsname xsi: (string->local-name "type")))
+  (make-nsname xsi: (string->local-name "nil")))
 
 (define xsi:schemaLocation
   (make-nsname xsi: (string->local-name "schemaLocation")))

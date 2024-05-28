@@ -1,43 +1,51 @@
 #lang racket/base
 
-(require racket/contract
+(require racket/bool
+         racket/contract
          racket/list
          racket/set
+         racket/stream
          ;; --------------------------------------
          "./graph.rkt"
+         "./quad.rkt"
+         "./resource.rkt"
          "./statement.rkt"
          "./triple.rkt"
-         (only-in "./v/sd.rkt" sd:Dataset))
+         (only-in "./v/sd.rkt"
+                  sd:Dataset))
 
-
-(provide (contract-out
-          (struct dataset ((name (or/c resource? #f))
-                           (graphs (hash/c graph-name? graph?))))
-          (named-dataset (-> resource? (hash/c graph-name? graph?) dataset?))
-          (unnamed-dataset (-> (hash/c graph-name? graph?) dataset?))
-          (graph-list->dataset (-> (listof graph?) dataset?))
-          (dataset-empty? (-> dataset? boolean?))
-          (dataset-count (-> dataset? exact-nonnegative-integer?))
-          (dataset-has-named? (-> dataset? subject? boolean?))
-          (dataset-has-default? (-> dataset? boolean?))
-          (dataset-ref (-> dataset? graph-name? (or/c graph? #f)))
-          (dataset-ref-default (-> dataset?  (or/c graph? #f)))
-          (dataset-ref! (-> dataset? graph-name? graph? graph?))
-          (dataset-set! (-> dataset? graph? void?))
-          (dataset-remove! (-> dataset? graph-name? void?))
-          (dataset-update! (-> dataset? graph-name? (-> graph? graph?) void?))
-          (dataset-clear! (-> dataset? void?))
-          ;; --------------------------------------
-          (dataset-map (->* (dataset? (-> graph-name? graph? any/c)) (boolean?) (listof any/c)))
-          (dataset-names (->* (dataset?) (boolean?) (listof graph-name?)))
-          (dataset-values (->* (dataset?) (boolean?) (listof graph?)))
-          (dataset->list (-> dataset? (listof (cons/c graph-name? graph?))))
-          ;; --------------------------------------
-          (dataset-distinct-subjects (-> dataset? (set/c subject?)))
-          (dataset-distinct-predicates (-> dataset? (set/c predicate?)))
-          (dataset-distinct-objects (-> dataset? (set/c object?)))
-          ;; --------------------------------------
-          (describe-dataset (-> dataset? (listof statement?)))))
+(provide (contract-out (struct dataset ((name (or/c resource? #f))
+                                        (graphs (hash/c graph-name? graph?))))
+                       ;; --------------------------------------
+                       (named-dataset (-> resource? (hash/c graph-name? graph?) dataset?))
+                       (unnamed-dataset (-> (hash/c graph-name? graph?) dataset?))
+                       (graph-list->dataset (-> (listof graph?) dataset?))
+                       (quad-set->dataset (-> (set/c quad?) dataset?))
+                       ;; --------------------------------------
+                       (dataset-named? (-> dataset? boolean?))
+                       (dataset-empty? (-> dataset? boolean?))
+                       (dataset-count (-> dataset? exact-nonnegative-integer?))
+                       ;; --------------------------------------
+                       (dataset-has-named? (-> dataset? graph-name? boolean?))
+                       (dataset-has-default? (-> dataset? boolean?))
+                       (dataset-ref (-> dataset? graph-name? (or/c graph? #f)))
+                       (dataset-ref-default (-> dataset?  (or/c graph? #f)))
+                       (dataset-set! (-> dataset? graph? void?))
+                       (dataset-remove! (-> dataset? graph-name? void?))
+                       (dataset-update! (-> dataset? graph-name? (-> graph? graph?) void?))
+                       (dataset-clear! (-> dataset? void?))
+                       ;; --------------------------------------
+                       (dataset-map (-> dataset? (-> graph-name? graph? any/c) (listof any/c)))
+                       (dataset-names (-> dataset? (listof graph-name?)))
+                       (dataset-values (-> dataset? (listof graph?)))
+                       (dataset->stream (-> dataset? (stream/c (cons/c graph-name? graph?))))
+                       ;; --------------------------------------
+                       (dataset-distinct-subjects (-> dataset? (set/c subject?)))
+                       (dataset-distinct-predicates (-> dataset? (set/c predicate?)))
+                       (dataset-distinct-objects (-> dataset? (set/c object?)))
+                       ;; --------------------------------------
+                       (describe-dataset (-> dataset? (set/c statement?)))
+                       (dataset-canonicalize (-> dataset? dataset?))))
 
 (struct dataset (name (graphs #:mutable))
   #:sealed
@@ -55,10 +63,27 @@
 (define (graph-list->dataset lst)
   (dataset #f (make-hash (map (λ (graph) (cons (graph-name graph) graph)) lst))))
 
-(define (dataset-empty? ds)
-  (hash-empty? (dataset-graphs ds)))
+(define (quad-set->dataset quads)
+  (let ((graphs (make-hash)))
+    (set-for-each
+     quads
+     (λ (quad)
+       (let* ((name (get-graph-name quad))
+              (graph (hash-ref! graphs
+                                name
+                                (if name
+                                    (named-graph name '())
+                                    (unnamed-graph '())))))
+         (graph-add graph quad))))
+    (unnamed-dataset graphs)))
 
 ;; -------------------------------------------------------------------------------------------------
+
+(define (dataset-named? ds)
+  (not (false? (dataset-name ds))))
+
+(define (dataset-empty? ds)
+  (hash-empty? (dataset-graphs ds)))
 
 (define (dataset-count ds)
   (hash-count (dataset-graphs ds)))
@@ -80,10 +105,6 @@
 (define (dataset-ref ds name)
   (hash-ref (dataset-graphs ds) name #f))
 
-(define (dataset-ref! ds name to-set)
-  ;; TODO assert (equal? (graph-name to-set) name)
-  (hash-ref! (dataset-graphs ds) name to-set))
-
 (define (dataset-set! ds graph)
   (hash-set! (dataset-graphs ds) (graph-name graph) graph))
 
@@ -101,17 +122,17 @@
 
 ;; -------------------------------------------------------------------------------------------------
 
-(define (dataset-map ds proc (try-order? #f))
-  (hash-map (dataset-graphs ds) proc try-order?))
+(define (dataset-map ds proc)
+  (hash-map (dataset-graphs ds) proc #f))
 
-(define (dataset-names ds (try-order? #f))
-  (hash-keys (dataset-graphs ds) try-order?))
+(define (dataset-names ds )
+  (hash-keys (dataset-graphs ds) #f))
 
-(define (dataset-values ds (try-order? #f))
-  (hash-values (dataset-graphs ds) try-order?))
+(define (dataset-values ds )
+  (hash-values (dataset-graphs ds) #f))
 
-(define (dataset->list ds (try-order? #f))
-  (hash->list (dataset-graphs ds) try-order?))
+(define (dataset->stream ds)
+  (sequence->stream (dataset-graphs ds)))
 
 ;; -------------------------------------------------------------------------------------------------
 
@@ -132,3 +153,11 @@
      (flatten
       (map (λ (graph) (describe-graph graph))
            (dataset-graphs ds)))))
+
+(define (dataset-canonicalize in-dataset)
+  (struct-copy dataset in-dataset
+               (graphs
+                (make-hash
+                 (hash-map
+                  (dataset-graphs in-dataset)
+                  (λ (name graph) (cons name (graph-canonicalize graph))))))))

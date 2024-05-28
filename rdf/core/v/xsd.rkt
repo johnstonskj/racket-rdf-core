@@ -11,12 +11,13 @@
 
 (require (only-in "../name.rkt"
                   string->local-name)
-         (only-in "../namespace.rkt"
-                  string->namespace
-                  make-nsname)
          (only-in "../nsmap.rkt"
                   string->prefix
-                  nsmap-set!))
+                  nsmap-set!)
+         (only-in "../nsname.rkt"
+                  make-nsname)
+         (only-in "../resource.rkt"
+                  string->resource))
 
 (provide (all-defined-out))
 
@@ -27,12 +28,12 @@
 (define xsd-prefix-string "xsd")
 (define xsd-namespace-string "http://www.w3.org/2001/XMLSchema#")
 
-(define xsd: (string->namespace xsd-namespace-string))
+(define xsd: (string->resource xsd-namespace-string))
 
 (define (nsmap-add-xml-schema-datatypes map)
   (nsmap-set! map
               (string->prefix xsd-prefix-string)
-              (string->namespace xsd-namespace-string)))
+              (string->resource xsd-namespace-string)))
 
 ;; ------------------------------------------------------------------------------------------------
 ;; Public Types ❱ "ur" types

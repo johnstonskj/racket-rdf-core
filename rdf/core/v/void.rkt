@@ -13,12 +13,13 @@
 
 (require (only-in "../name.rkt"
                   string->local-name)
-         (only-in "../namespace.rkt"
-                  string->namespace
-                  make-nsname)
          (only-in "../nsmap.rkt"
                   string->prefix
-                  nsmap-set!))
+                  nsmap-set!)
+         (only-in "../nsname.rkt"
+                  make-nsname)
+         (only-in "../resource.rkt"
+                  string->resource))
 
 (provide (all-defined-out))
 
@@ -29,12 +30,12 @@
 (define void-prefix-string "void")
 (define void-namespace-string "http://rdfs.org/ns/void#")
 
-(define void: (string->namespace void-namespace-string))
+(define void: (string->resource void-namespace-string))
 
 (define (nsmap-add-void map)
   (nsmap-set! map
               (string->prefix void-prefix-string)
-              (string->namespace void-namespace-string)))
+              (string->resource void-namespace-string)))
 
 ;; ================================================================================================
 ;; Name definitions

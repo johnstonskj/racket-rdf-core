@@ -13,12 +13,13 @@
 
 (require (only-in "../name.rkt"
                   string->local-name)
-         (only-in "../namespace.rkt"
-                  string->namespace
-                  make-nsname)
          (only-in "../nsmap.rkt"
                   string->prefix
-                  nsmap-set!))
+                  nsmap-set!)
+         (only-in "../nsname.rkt"
+                  make-nsname)
+         (only-in "../resource.rkt"
+                  string->resource))
 
 (provide (all-defined-out))
 
@@ -29,12 +30,12 @@
 (define sd-prefix-string "sd")
 (define sd-namespace-string "http://www.w3.org/ns/sparql-service-description#")
 
-(define sd: (string->namespace sd-namespace-string))
+(define sd: (string->resource sd-namespace-string))
 
 (define (nsmap-add-service-description map)
   (nsmap-set! map
               (string->prefix sd-prefix-string)
-              (string->namespace sd-namespace-string)))
+              (string->resource sd-namespace-string)))
 
 ;; ================================================================================================
 ;; Name definitions

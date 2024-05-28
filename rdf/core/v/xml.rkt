@@ -11,12 +11,13 @@
 
 (require (only-in "../name.rkt"
                   string->local-name)
-         (only-in "../namespace.rkt"
-                  string->namespace
-                  make-nsname)
          (only-in "../nsmap.rkt"
                   string->prefix
-                  nsmap-set!))
+                  nsmap-set!)
+         (only-in "../nsname.rkt"
+                  make-nsname)
+         (only-in "../resource.rkt"
+                  string->resource))
 
 (provide (all-defined-out))
 
@@ -27,12 +28,12 @@
 (define xml-prefix-string "xml")
 (define xml-namespace-string "http://www.w3.org/XML/1998/namespace#")
 
-(define xml: (string->namespace xml-namespace-string))
+(define xml: (string->resource xml-namespace-string))
 
 (define (nsmap-add-xml map)
   (nsmap-set! map
               (string->prefix xml-prefix-string)
-              (string->namespace xml-namespace-string)))
+              (string->resource xml-namespace-string)))
 
 ;; ================================================================================================
 ;; Name definitions

@@ -2,36 +2,45 @@
 
 (require racket/contract
          racket/list
-         ;; --------------------------------------
-         net/url-string
+         racket/set
          ;; --------------------------------------
          "./literal.rkt"
+         "./resource.rkt"
          "./statement.rkt"
          "./v/rdf.rkt")
 
-(provide (contract-out
-          (triple? (-> any/c boolean?))
-          (triple (-> subject? predicate? object? triple?))
-          (list->triple (-> (list/c subject? predicate? object?) triple?))
-          (reify (-> subject? predicate? object? (listof triple?)))
-          (statement->reified-triples (-> statement? (listof triple?)))
-          ;; --------------------------------------
-          (statement-list
-           (-> (or/c subject? string?)
-               (listof (list/c (or/c predicate? string?)
-                               (or/c (or/c object? string? boolean? number?)
-                                     (listof (or/c object? string? boolean? number?)))))
-               (listof triple?)))
-          (anon-statement-list
-           (-> (listof (list/c (or/c predicate? string?)
-                               (or/c (or/c object? string? boolean? number?)
-                                     (listof (or/c object? string? boolean? number?)))))
-               (listof triple?)))
-          ;; --------------------------------------
-          (statement-add-to-subject(-> statement? predicate? object? triple?))
-          (statement-add-to-object (-> statement? predicate? object? triple?))
-          (type-statement (-> subject? resource? triple?))
-          (statement-add-type-to-subject (-> statement? resource? triple?))))
+(provide (contract-out (triple? (-> any/c boolean?))
+                       (triple (-> subject? predicate? object? triple?))
+                       (list->triple
+                        (-> (list/c subject? predicate? object?) triple?))
+                       (statement->reified-triples
+                        (->* (statement?) ((or/c subject? #f)) (set/c triple?)))
+                       ;; --------------------------------------
+                       (make-triple
+                        (-> (or/c subject? string?)
+                            (or/c predicate? string?)
+                            (or/c object? string? boolean? number?)
+                            triple?))
+                       (make-statements
+                        (-> (or/c subject? string?)
+                            (listof
+                             (list/c (or/c predicate? string?)
+                                     (or/c (or/c object? string? boolean? number?)
+                                           (listof
+                                            (or/c object? string? boolean? number?)))))
+                            (set/c triple?)))
+                       (make-anon-statements
+                        (-> (listof
+                             (list/c (or/c predicate? string?)
+                                     (or/c (or/c object? string? boolean? number?)
+                                           (listof
+                                            (or/c object? string? boolean? number?)))))
+                            (set/c triple?)))
+                       ;; --------------------------------------
+                       (statement-add-to-subject(-> statement? predicate? object? triple?))
+                       (statement-add-to-object (-> statement? predicate? object? triple?))
+                       (type-statement (-> subject? resource? triple?))
+                       (statement-add-type-to-subject (-> statement? resource? triple?))))
 
 ;; -------------------------------------------------------------------------------------------------
 ;; `triple` concrete type
@@ -51,35 +60,39 @@
 (define (list->triple stmt)
   (apply triple stmt))
 
-(define (statement->reified-triples stmt)
-  (map list->triple (statement->reified-list stmt)))
-
-(define (reify subject predicate object)
-  (statement->reified-list (triple subject predicate object)))
+(define (statement->reified-triples  stmt (new-subject #f))
+  (set-map
+   list->triple
+   (statement->reified-set stmt new-subject)))
 
 ;; -------------------------------------------------------------------------------------------------
 ;; Statement Lists
 ;; -------------------------------------------------------------------------------------------------
 
-(define (statement-list subject predicate-object-list)
-  (let ((common-subject (if (string? subject) (string->url subject) subject)))
-    (flatten
-     (map
-      (λ (pair)
-        (let* ((this-predicate (car pair))
-               (common-predicate (if (string? this-predicate)
-                                     (string->url this-predicate)
-                                     this-predicate))
-               (this-object-list (cadr pair)))
-          (map (λ (this-object) (triple
-                                 common-subject
-                                 common-predicate
-                                 (if (literal? this-object) this-object (->literal this-object))))
-               this-object-list)))
-      predicate-object-list))))
+(define (make-triple subject predicate object)
+  (triple (cond ((subject? subject) subject)
+                ((string? subject) (string->resource subject))
+                (else (raise-argument-error 'subject "subject?" subject)))
+          (cond ((predicate? predicate) predicate)
+                ((string? predicate) (string->resource predicate))
+                (else (raise-argument-error 'predicate "predicate?" predicate)))
+          (cond ((object? object) object)
+                (else (->literal object)))))
 
-(define (anon-statement-list predicate-object-list)
-  (statement-list (make-blank-node) predicate-object-list))
+(define (make-statements subject predicate-object-list)
+  (list->set
+   (flatten
+    (map (λ (predicate+object-list)
+           (let ((objects (cadr predicate+object-list)))
+             (if (list? objects)
+               (map (λ (object)
+                      (make-triple subject (car predicate+object-list) object))
+                    objects)
+               (make-triple subject (car predicate+object-list) objects))))
+         predicate-object-list))))
+
+(define (make-anon-statements predicate-object-list)
+  (make-statements (make-blank-node) predicate-object-list))
 
 ;; -------------------------------------------------------------------------------------------------
 ;; Additional Constructors

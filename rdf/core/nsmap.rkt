@@ -2,12 +2,13 @@
 
 (require racket/bool
          racket/contract
-         racket/list
+         racket/set
+         ;; --------------------------------------
+         net/url-structs
          ;; --------------------------------------
          "./name.rkt"
-         "./namespace.rkt"
-         (only-in "./private/strings.rkt"
-                  string-empty?)
+         "./nsname.rkt"
+         "./resource.rkt"
          (only-in "./private/sparql-names.rkt"
                   prefixed-name-separator
                   prefixed-name-split
@@ -15,62 +16,67 @@
                   prefix-name-string?
                   prefix-string?))
 
-(provide (contract-out
-          (prefix-string? (-> any/c boolean?))
-          (prefix-name-string? (-> any/c boolean?))
-          (prefix? (-> any/c boolean?))
-          (prefix-empty? (-> prefix? boolean?))
-          (string->prefix (-> (or/c prefix-string? prefix-name-string?) prefix?))
-          (empty-prefix  (-> prefix?))
-          (prefix->string (-> prefix? prefix-string?))
-          (prefix->name-string (-> prefix? prefix-name-string?))
-          (prefix+name->nsname
-           (-> prefix? local-name? nsmap? (or/c nsname? #f)))
-          (prefix+name->url
-           (-> prefix? local-name? nsmap? (or/c url-absolute? #f)))
-          ;; --------------------------------------
-          (prefixed-name-separator char?)
-          (prefixed-name-string? (-> any/c boolean?))
-          (struct prefixed-name ((prefix prefix?)
-                                 (name local-name?)))
-          (make-prefixed-name
-           (-> (or/c prefix-string? prefix?)
-               (or/c local-name-string? local-name?) prefixed-name?))
-          (string->prefixed-name (-> prefixed-name-string? (or/c prefixed-name? #f)))
-          (prefixed-name->string (-> prefixed-name? prefixed-name-string?))
-          (nsname->prefixed-name
-           (-> nsname? nsmap? (or/c prefixed-name? #f)))
-          (namespace+name->prefixed-name
-           (-> namespace? local-name? nsmap? (or/c prefixed-name? #f)))
-          (prefixed-name->nsname
-           (-> prefixed-name? nsmap? (or/c nsname? #f)))
-          (prefixed-name->url
-           (-> prefixed-name? nsmap? (or/c url-absolute? #f)))
-          ;; --------------------------------------
-          ;; --------------------------------------
-          (struct nsmap ((mapping (hash/c (or/c prefix? #f) namespace?))))
-          (make-common-nsmap (-> nsmap?))
-          (make-rdf-only-nsmap (-> nsmap?))
-          (make-nsmap (->* () ((listof (cons/c prefix? namespace?))) nsmap?))
-          (nsmap-empty?  (-> nsmap? boolean?))
-          (nsmap-count (-> nsmap? exact-nonnegative-integer?))
-          (nsmap-has-prefix? (-> nsmap? prefix? boolean?))
-          (nsmap-has-default? (-> nsmap? boolean?))
-          (nsmap-ref (-> nsmap? prefix? (or/c namespace? #f)))
-          (nsmap-ref-default  (-> nsmap? (or/c namespace? #f)))
-          (nsmap-ref! (-> nsmap? prefix? namespace? namespace?))
-          (nsmap-set! (-> nsmap? prefix? namespace? void?))
-          (nsmap-set-default! (-> nsmap? namespace? void?))
-          (nsmap-remove! (-> nsmap? prefix? void?))
-          (nsmap-update! (-> nsmap? prefix? (-> namespace? namespace?) void?))
-          (nsmap-clear! (-> nsmap? void?))
-          (nsmap-has-namespace? (-> nsmap? namespace? boolean?))
-          (nsmap-find-namespace (-> nsmap? namespace? (or/c (cons/c prefix? namespace?) #f)))
-          (nsmap-prefix-ref (-> nsmap? namespace? (or/c prefix? #f)))
-          (nsmap-map (->* (nsmap? (-> (cons/c prefix? namespace?))) (boolean?) any/c))
-          (nsmap-names (-> nsmap? (listof prefix?)))
-          (nsmap-values (-> nsmap? (listof namespace?)))
-          (nsmap->list (-> nsmap? (listof (cons/c prefix? namespace?))))))
+(provide (contract-out (prefix-string? (-> any/c boolean?))
+                       (prefix-name-string? (-> any/c boolean?))
+                       (prefix? (-> any/c boolean?))
+                       (prefix-empty? (-> prefix? boolean?))
+                       (string->prefix (-> (or/c prefix-string? prefix-name-string?) prefix?))
+                       (empty-prefix  (-> prefix?))
+                       (prefix->string (-> prefix? prefix-string?))
+                       (prefix->name-string (-> prefix? prefix-name-string?))
+                       (prefix+name->nsname
+                        (-> prefix? local-name? nsmap? (or/c nsname? #f)))
+                       (prefix+name->resource
+                        (-> prefix? local-name? nsmap? (or/c resource-absolute? #f)))
+                       ;; --------------------------------------
+                       (prefixed-name-separator char?)
+                       (prefixed-name-string? (-> any/c boolean?))
+                       (struct prefixed-name ((prefix prefix?)
+                                              (name local-name?)))
+                       (make-prefixed-name
+                        (-> (or/c prefix-string? prefix?)
+                            (or/c local-name-string? local-name?) prefixed-name?))
+                       (string->prefixed-name (-> prefixed-name-string? (or/c prefixed-name? #f)))
+                       (prefixed-name->string (-> prefixed-name? prefixed-name-string?))
+                       (nsname->prefixed-name
+                        (-> nsname? nsmap? (or/c prefixed-name? #f)))
+                       (namespace+name->prefixed-name
+                        (-> resource? local-name? nsmap? (or/c prefixed-name? #f)))
+                       (prefixed-name->nsname
+                        (-> prefixed-name? nsmap? (or/c nsname? #f)))
+                       (prefixed-name->resource
+                        (-> prefixed-name? nsmap? (or/c resource-absolute? #f)))
+                       ;; --------------------------------------
+                       (struct nsmap ((mapping (hash/c (or/c prefix? #f) resource?))))
+                       (make-common-nsmap (-> nsmap?))
+                       (make-rdf-only-nsmap (-> nsmap?))
+                       (make-rdf+xsd-nsmap (-> nsmap?))
+                       (make-nsmap (->* () ((listof (cons/c prefix? resource?))) nsmap?))
+                       ;; --------------------------------------
+                       (nsmap-shorten (-> nsmap? resource? (or/c prefixed-name? prefix? resource?)))
+                       ;; --------------------------------------
+                       (nsmap-empty?  (-> nsmap? boolean?))
+                       (nsmap-count (-> nsmap? exact-nonnegative-integer?))
+                       (nsmap-has-prefix? (-> nsmap? prefix? boolean?))
+                       (nsmap-has-default? (-> nsmap? boolean?))
+                       (nsmap-ref (-> nsmap? prefix? (or/c resource? #f)))
+                       (nsmap-ref-default  (-> nsmap? (or/c resource? #f)))
+                       (nsmap-ref! (-> nsmap? prefix? resource? resource?))
+                       (nsmap-set! (-> nsmap? prefix? resource? void?))
+                       (nsmap-set-default! (-> nsmap? resource? void?))
+                       (nsmap-remove! (-> nsmap? prefix? void?))
+                       (nsmap-update! (-> nsmap? prefix? (-> resource? resource?) void?))
+                       (nsmap-clear! (-> nsmap? void?))
+                       ;; --------------------------------------
+                       (nsmap-has-namespace? (-> nsmap? resource? boolean?))
+                       (nsmap-find-namespace
+                        (-> nsmap? resource? (or/c (cons/c prefix? resource?) #f)))
+                       (nsmap-prefix-ref (-> nsmap? resource? (or/c prefix? #f)))
+                       ;; --------------------------------------
+                       (nsmap-map (->* (nsmap? (-> prefix? resource? any)) (boolean?) any/c))
+                       (nsmap-prefixes (-> nsmap? (listof prefix?)))
+                       (nsmap-namespaces (-> nsmap? (listof resource?)))
+                       (nsmap->list (-> nsmap? (listof (cons/c prefix? resource?))))))
 
 ;; -------------------------------------------------------------------------------------------------
 ;; Namespace prefix
@@ -78,13 +84,7 @@
 
 (define empty-prefix-string (string prefixed-name-separator))
 
-;; prefix-string?
-
-;; prefix-name-string?
-
-(struct prefix (str)
-  #:transparent
-  #:guard (struct-guard/c prefix-string?))
+(struct prefix (str) #:transparent)
 
 (define (empty-prefix)
   (prefix empty-prefix-string))
@@ -108,20 +108,14 @@
   (let ((ns (nsmap-ref nsmap prefix)))
     (if ns (make-nsname ns name) #f)))
 
-(define (prefix+name->url prefix name nsmap)
-  (nsname->url (prefix+name->nsname prefix name nsmap)))
+(define (prefix+name->resource prefix name nsmap)
+  (nsname->resource (prefix+name->nsname prefix name nsmap)))
 
 ;; -------------------------------------------------------------------------------------------------
 ;; Prefixed Names
 ;; -------------------------------------------------------------------------------------------------
 
-;; prefixed-name-separator
-
-;; prefixed-name-string?
-
-(struct prefixed-name (prefix name)
-  #:transparent
-  #:guard (struct-guard/c prefix? local-name?))
+(struct prefixed-name (prefix name) #:transparent)
 
 (define (make-prefixed-name prefix name)
   (prefixed-name
@@ -143,8 +137,8 @@
 (define (prefixed-name->nsname pname nsmap)
   (prefix+name->nsname nsmap (prefixed-name-prefix pname) (prefixed-name-name pname)))
 
-(define (prefixed-name->url pname nsmap)
-  (prefix+name->url nsmap (prefixed-name-prefix pname) (prefixed-name-name pname)))
+(define (prefixed-name->resource pname nsmap)
+  (prefix+name->resource nsmap (prefixed-name-prefix pname) (prefixed-name-name pname)))
 
 (define (nsname->prefixed-name nsname nsmap)
   (namespace+name->prefixed-name nsmap
@@ -159,9 +153,7 @@
 ;; Namespace maps
 ;; -------------------------------------------------------------------------------------------------
 
-(struct nsmap ((mapping #:mutable))
-  #:transparent
-  #:guard (struct-guard/c (hash/c (or/c prefix? #f) namespace?)))
+(struct nsmap ((mapping #:mutable)) #:transparent)
 
 (define (make-nsmap (assocs '()))
   (nsmap (make-hash assocs)))
@@ -169,28 +161,49 @@
 (define (make-common-nsmap)
   (make-nsmap
    (list (cons (string->prefix "rdf:")
-               (string->namespace "http://www.w3.org/1999/02/22-rdf-syntax-ns#"))
+               (string->resource "http://www.w3.org/1999/02/22-rdf-syntax-ns#"))
          (cons (string->prefix "rdfs")
-               (string->namespace "http://www.w3.org/2000/01/rdf-schema#"))
+               (string->resource "http://www.w3.org/2000/01/rdf-schema#"))
          (cons (string->prefix "xsd")
-               (string->namespace "http://www.w3.org/2001/XMLSchema#"))
+               (string->resource "http://www.w3.org/2001/XMLSchema#"))
          (cons (string->prefix "owl")
-               (string->namespace "http://www.w3.org/2002/07/owl#"))
+               (string->resource "http://www.w3.org/2002/07/owl#"))
          (cons (string->prefix "dc")
-               (string->namespace "http://purl.org/dc/elements/1.1/"))
+               (string->resource "http://purl.org/dc/elements/1.1/"))
          (cons (string->prefix "dcterms")
-               (string->namespace "http://purl.org/dc/terms/")))))
+               (string->resource "http://purl.org/dc/terms/")))))
 
 (define (make-rdf-only-nsmap)
   (make-nsmap
    (list (cons (string->prefix "rdf:")
-               (string->namespace "http://www.w3.org/1999/02/22-rdf-syntax-ns#")))))
+               (string->resource "http://www.w3.org/1999/02/22-rdf-syntax-ns#")))))
+
+(define (make-rdf+xsd-nsmap)
+  (make-nsmap
+   (list (cons (string->prefix "rdf:")
+               (string->resource "http://www.w3.org/1999/02/22-rdf-syntax-ns#"))
+         (cons (string->prefix "xsd")
+               (string->resource "http://www.w3.org/2001/XMLSchema#")))))
 
 (define (nsmap-empty? map)
   (hash-empty? (nsmap-mapping map)))
 
 (define (nsmap-count map)
   (hash-count (nsmap-mapping map)))
+
+(define (nsmap-shorten map resource)
+  (let ((prefix (if (resource-maybe-namespace? resource)
+                    (nsmap-prefix-ref map resource)
+                    #f)))
+    (let-values (((namespace name) (resource->namespace+name resource)))
+      (cond
+      (prefix prefix)
+      ((and namespace name)
+       (let ((prefix (nsmap-prefix-ref map namespace)))
+         (if prefix
+             (prefixed-name prefix (string->local-name name))
+             resource)))
+      (else resource)))))
 
 ;; -------------------------------------------------------------------------------------------------
 
@@ -245,10 +258,10 @@
 (define (nsmap-map map proc (try-order? #f))
   (hash-map (nsmap-mapping map) proc try-order?))
 
-(define (nsmap-names map (try-order? #f))
+(define (nsmap-prefixes map (try-order? #f))
   (hash-keys (nsmap-mapping map) try-order?))
 
-(define (nsmap-values map (try-order? #f))
+(define (nsmap-namespaces map (try-order? #f))
   (hash-values (nsmap-mapping map) try-order?))
 
 (define (nsmap->list map (try-order? #f))

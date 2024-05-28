@@ -13,12 +13,13 @@
 
 (require (only-in "../name.rkt"
                   string->local-name)
-         (only-in "../namespace.rkt"
-                  string->namespace
-                  make-nsname)
          (only-in "../nsmap.rkt"
                   string->prefix
-                  nsmap-set!))
+                  nsmap-set!)
+         (only-in "../nsname.rkt"
+                  make-nsname)
+         (only-in "../resource.rkt"
+                  string->resource))
 
 (provide (all-defined-out))
 
@@ -29,12 +30,12 @@
 (define rdf-prefix-string "rdf")
 (define rdf-namespace-string "http://www.w3.org/1999/02/22-rdf-syntax-ns#")
 
-(define rdf: (string->namespace rdf-namespace-string))
+(define rdf: (string->resource rdf-namespace-string))
 
 (define (nsmap-add-rdf map)
   (nsmap-set! map
               (string->prefix rdf-prefix-string)
-              (string->namespace rdf-namespace-string)))
+              (string->resource rdf-namespace-string)))
 
 ;; ================================================================================================
 ;; Name definitions
@@ -59,7 +60,7 @@
   (make-nsname rdf: (string->local-name "Bag")))
 
 (define rdf:Seq
-  (make-nsname rdf: (string->local-name "Sequence")))
+  (make-nsname rdf: (string->local-name "Seq")))
 
 (define rdf:Alt
   (make-nsname rdf: (string->local-name"Alt")))
@@ -123,7 +124,7 @@
   (make-nsname rdf: (string->local-name "li")))
 
 (define (rdf:_ n)
-  ((make-nsname rdf: (string->local-name (format "_~a" n)))))
+  (make-nsname rdf: (string->local-name (format "_~a" n))))
 
 (define rdf:nodeID
   (make-nsname rdf: (string->local-name "nodeID")))
@@ -133,5 +134,3 @@
 
 (define rdf:resource
   (make-nsname rdf: (string->local-name "resource")))
-
-

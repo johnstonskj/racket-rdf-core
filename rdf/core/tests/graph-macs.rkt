@@ -1,12 +1,21 @@
 #lang racket/base
 
-(require rackunit
+(require racket/set
+         ;; --------------------------------------
+         rackunit
+         rackunit/text-ui
          ;; --------------------------------------
          "../graph.rkt"
-         "../io.rkt")
+         "../literal.rkt"
+         "../resource.rkt"
+         "../statement.rkt"
+         "../triple.rkt"
+         ;; --------------------------------------
+         "./shared.rkt")
 
-(provide macro-rdf-sub-graph-test-suite
-         macro-rdf-graph-test-suite)
+;; -------------------------------------------------------------------------------------------------
+;; Test Suite(s)
+;; -------------------------------------------------------------------------------------------------
 
 (define macro-rdf-sub-graph-test-suite
   (test-suite
@@ -14,87 +23,142 @@
 
    (test-case
        "Single statement"
-     (display
-      (graph->ntriple-string
-       (unnamed-graph
-        (rdf-sub-graph "http://example.com/p/me"
-                       "http://example.com/v/people#hasName" "Me!")))))
+     (check-equal?
+      (rdf-sub-graph "http://example.com/p/me"
+                     "http://example.com/v/people#hasName" "Alice")
+      (set (triple (string->resource "http://example.com/p/me")
+                   (string->resource "http://example.com/v/people#hasName")
+                   (->literal "Alice")))))
 
    (test-case
        "Single statement, using parens"
-     (display
-      (graph->ntriple-string
-       (unnamed-graph
-        (rdf-sub-graph "http://example.com/p/me"
-                       ("http://example.com/v/people#hasName" ("Me!")))))))
+     (check-equal?
+      (rdf-sub-graph "http://example.com/p/me"
+                     ("http://example.com/v/people#hasName" ("Bob")))
+      (set (triple (string->resource "http://example.com/p/me")
+                   (string->resource "http://example.com/v/people#hasName")
+                   (->literal "Bob")))))
 
    (test-case
        "Multiple predicates with single objects"
-     (display
-      (graph->ntriple-string
-       (unnamed-graph
-        (rdf-sub-graph "http://example.com/p/me"
-                       ("http://example.com/v/people#hasFirstName" "Me")
-                       ("http://example.com/v/people#hasLastName" "!"))))))
+     (check-equal?
+      (rdf-sub-graph "http://example.com/p/me"
+                     ("http://example.com/v/people#hasFirstName" "Carol")
+                     ("http://example.com/v/people#hasLastName" "Craig"))
+      (set (triple (string->resource "http://example.com/p/me")
+                   (string->resource "http://example.com/v/people#hasFirstName")
+                   (->literal "Carol"))
+           (triple (string->resource "http://example.com/p/me")
+                   (string->resource "http://example.com/v/people#hasLastName")
+                   (->literal "Craig")))))
 
    (test-case
        "Tests for multiple predicates with single objects, using parens"
-     (display
-      (graph->ntriple-string
-       (unnamed-graph
-        (rdf-sub-graph "http://example.com/p/me"
-                       ("http://example.com/v/people#hasFirstName" ("Me"))
-                       ("http://example.com/v/people#hasLastName" ("!")))))))
+     (check-equal?
+      (rdf-sub-graph "http://example.com/p/me"
+                     ("http://example.com/v/people#hasFirstName" ("Dan"))
+                     ("http://example.com/v/people#hasLastName" ("Davids")))
+      (set (triple (string->resource "http://example.com/p/me")
+                   (string->resource "http://example.com/v/people#hasFirstName")
+                   (->literal "Dan"))
+           (triple (string->resource "http://example.com/p/me")
+                   (string->resource "http://example.com/v/people#hasLastName")
+                   (->literal "Davids")))))
 
    (test-case
        "Multiple predicates each with multiple objects"
-     (display
-      (graph->ntriple-string
-       (unnamed-graph
-        (rdf-sub-graph "http://example.com/p/me"
-                       ("http://example.com/v/people#hasName" ("Me" "!"))
-                       ("http://example.com/v/people#hasScores" (2 4 6)))))))
+     (check-equal?
+      (rdf-sub-graph "http://example.com/p/me"
+                     ("http://example.com/v/people#hasName" ("Erin" "Eves"))
+                     ("http://example.com/v/people#hasScores" (2 4 6)))
+      (set (triple (string->resource "http://example.com/p/me")
+                   (string->resource "http://example.com/v/people#hasName")
+                   (->literal "Erin"))
+           (triple (string->resource "http://example.com/p/me")
+                   (string->resource "http://example.com/v/people#hasName")
+                   (->literal "Eves"))
+           (triple (string->resource "http://example.com/p/me")
+                   (string->resource "http://example.com/v/people#hasScores")
+                   (->literal 2))
+           (triple (string->resource "http://example.com/p/me")
+                   (string->resource "http://example.com/v/people#hasScores")
+                   (->literal 4))
+           (triple (string->resource "http://example.com/p/me")
+                   (string->resource "http://example.com/v/people#hasScores")
+                   (->literal 6)))))
 
    ;; ----------------------------------------------------------------------------
 
    (test-case
        "Anonymous subject and single statement"
-     (display
-      (graph->ntriple-string
-       (unnamed-graph
-        (rdf-sub-graph "http://example.com/v/people#hasName" "Me!")))))
+     (let ((label-maker (test-bnode-label-maker)))
+       (parameterize ((blank-node-label-maker label-maker))
+         (check-equal?
+          (rdf-sub-graph "http://example.com/v/people#hasName" "Alice")
+          (set (triple (make-blank-node "test-1")
+                       (string->resource "http://example.com/v/people#hasName")
+                       (->literal "Alice")))))))
 
    (test-case
        "Anonymous subject and single statement, using parens"
-     (display
-      (map statement->ntriple-string
-           (rdf-sub-graph ("http://example.com/v/people#hasName" ("Me!"))))))
+     (let ((label-maker (test-bnode-label-maker)))
+       (parameterize ((blank-node-label-maker label-maker))
+         (check-equal?
+          (rdf-sub-graph ("http://example.com/v/people#hasName" ("Bob")))
+          (set (triple (make-blank-node "test-1")
+                       (string->resource "http://example.com/v/people#hasName")
+                       (->literal "Bob")))))))
 
    (test-case
        "Anonymous subject and multiple predicates with single objects"
-     (display
-      (graph->nquad-string
-       (unnamed-graph
-        (rdf-sub-graph ("http://example.com/v/people#hasFirstName" "Me")
-                       ("http://example.com/v/people#hasLastName" "!"))))))
+     (let ((label-maker (test-bnode-label-maker)))
+       (parameterize ((blank-node-label-maker label-maker))
+         (check-equal?
+          (rdf-sub-graph ("http://example.com/v/people#hasFirstName" "Carlos")
+                         ("http://example.com/v/people#hasLastName" "Craig"))
+          (set (triple (make-blank-node "test-1")
+                       (string->resource "http://example.com/v/people#hasFirstName")
+                       (->literal "Carlos"))
+               (triple (make-blank-node "test-1")
+                       (string->resource "http://example.com/v/people#hasLastName")
+                       (->literal "Craig")))))))
 
    (test-case
        "Anonymous subject and multiple predicates with single objects, using parens"
-     (display
-      (graph->nquad-string
-       (unnamed-graph
-        (rdf-sub-graph ("http://example.com/v/people#hasFirstName" ("Me"))
-                       ("http://example.com/v/people#hasLastName" ("!")))))))
+     (let ((label-maker (test-bnode-label-maker)))
+       (parameterize ((blank-node-label-maker label-maker))
+         (check-equal?
+          (rdf-sub-graph ("http://example.com/v/people#hasFirstName" ("Dan"))
+                         ("http://example.com/v/people#hasLastName" ("Davids")))
+          (set (triple (make-blank-node "test-1")
+                       (string->resource "http://example.com/v/people#hasFirstName")
+                       (->literal "Dan"))
+               (triple (make-blank-node "test-1")
+                       (string->resource "http://example.com/v/people#hasLastName")
+                       (->literal "Davids")))))))
 
    (test-case
        "Anonymous subject and multiple predicates each with multiple objects"
-     (display
-      (graph->nquad-string
-       (unnamed-graph
-        (rdf-sub-graph ("http://example.com/v/people#hasName" ("Me" "!"))
-                       ("http://example.com/v/people#hasScores" (2 4 6)))))))
-
-   ))
+     (let ((label-maker (test-bnode-label-maker)))
+       (parameterize ((blank-node-label-maker label-maker))
+         (check-equal?
+          (rdf-sub-graph ("http://example.com/v/people#hasName" ("Erin" "Eves"))
+                         ("http://example.com/v/people#hasScores" (2 4 6)))
+          (set (triple (make-blank-node "test-1")
+                       (string->resource "http://example.com/v/people#hasName")
+                       (->literal "Erin"))
+               (triple (make-blank-node "test-1")
+                       (string->resource "http://example.com/v/people#hasName")
+                       (->literal "Eves"))
+               (triple (make-blank-node "test-1")
+                       (string->resource "http://example.com/v/people#hasScores")
+                       (->literal 2))
+               (triple (make-blank-node "test-1")
+                       (string->resource "http://example.com/v/people#hasScores")
+                       (->literal 4))
+               (triple (make-blank-node "test-1")
+                       (string->resource "http://example.com/v/people#hasScores")
+                       (->literal 6)))))))))
 
 (define macro-rdf-graph-test-suite
   (test-suite
@@ -102,35 +166,41 @@
 
    (test-case
        "Single statement in default graph"
-     (display
-      (graph->ntriple-string
-       (rdf-graph "http://example.com/p/me" "http://example.com/v/people#hasName" "Me!"))))
+     (check-equal?
+      (rdf-graph "http://example.com/p/me" "http://example.com/v/people#hasName" "Alice")
+      (unnamed-graph
+       (set (triple (string->resource "http://example.com/p/me")
+                    (string->resource "http://example.com/v/people#hasName")
+                    (->literal "Alice"))))))
 
    (test-case
        "Single statement in named graph"
-     (display
-      (graph->nquad-string
-       (rdf-graph "http://example.com/p/peeps" =>
-                  "http://example.com/p/me" "http://example.com/v/people#hasName" "Me!"))))
+     (check-equal?
+      (rdf-graph "http://example.com/p/peeps" =>
+                 "http://example.com/p/me" "http://example.com/v/people#hasName" "Bob")
+      (named-graph
+       (string->resource "http://example.com/p/peeps")
+       (set (triple (string->resource "http://example.com/p/me")
+                    (string->resource "http://example.com/v/people#hasName")
+                    (->literal "Bob"))))))
 
    (test-case
        "Multi statement in default graph"
-     (display
-      (graph->nquad-string
-       (rdf-graph "http://example.com/p/me"
-                  ("http://example.com/v/people#hasFirstName" "Me")
-                  ("http://example.com/v/people#hasLastName" "!")))))
-
-   ))
+     (check-equal?
+      (rdf-graph "http://example.com/p/me"
+                 ("http://example.com/v/people#hasFirstName" "Charlie")
+                 ("http://example.com/v/people#hasLastName" "Craig"))
+      (unnamed-graph
+       (set (triple (string->resource "http://example.com/p/me")
+                    (string->resource "http://example.com/v/people#hasFirstName")
+                    (->literal "Charlie"))
+            (triple (string->resource "http://example.com/p/me")
+                    (string->resource "http://example.com/v/people#hasLastName")
+                    (->literal "Craig"))))))))
 
 ;; -------------------------------------------------------------------------------------------------
 ;; Test Runner
 ;; -------------------------------------------------------------------------------------------------
 
-(module+ test
-
-  (require rackunit
-           rackunit/text-ui)
-
-  (run-tests macro-rdf-sub-graph-test-suite)
-  (run-tests macro-rdf-graph-test-suite))
+(run-tests macro-rdf-sub-graph-test-suite)
+(run-tests macro-rdf-graph-test-suite)

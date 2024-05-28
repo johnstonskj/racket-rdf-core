@@ -9,11 +9,13 @@
 ;; Support status: complete
 ;;
 
-(require (only-in "../namespace.rkt"
-                  string->namespace)
+(require (only-in "../name.rkt"
+                  string->local-name)
          (only-in "../nsmap.rkt"
                   string->prefix
-                  nsmap-set!))
+                  nsmap-set!)
+         (only-in "../resource.rkt"
+                  string->resource))
 
 (provide (all-defined-out))
 
@@ -24,9 +26,9 @@
 (define xmlns-prefix-string "xmlns")
 (define xmlns-namespace-string "http://www.w3.org/2000/xmlns#")
 
-(define xmlns: (string->namespace xmlns-namespace-string))
+(define xmlns: (string->resource xmlns-namespace-string))
 
 (define (nsmap-add-xmlns map)
   (nsmap-set! map
               (string->prefix xmlns-prefix-string)
-              (string->namespace xmlns-namespace-string)))
+              (string->resource xmlns-namespace-string)))

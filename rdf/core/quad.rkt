@@ -2,17 +2,19 @@
 
 (require racket/contract
          racket/function
+         racket/set
          ;; --------------------------------------
          "./graph.rkt"
-         "./literal.rkt"
          "./statement.rkt")
 
-(provide (contract-out
-          (quad? (-> any/c boolean?))
-          (quad (-> subject? predicate? object? graph-name? quad?))
-          (rename quad-graph-name get-graph-name (-> quad? graph-name?))
-          (statement->quad (-> statement? graph-name? quad?))
-          (graph->quads (-> graph? (listof quad?)))))
+(provide (contract-out (quad? (-> any/c boolean?))
+                       (quad (-> subject? predicate? object? graph-name? quad?))
+                       (rename quad-graph-name get-graph-name (-> quad? graph-name?))
+                       (statement->quad (-> statement? graph-name? quad?))
+                       (graph->quads (-> graph? (set/c quad?)))))
+
+;; -------------------------------------------------------------------------------------------------
+;; -------------------------------------------------------------------------------------------------
 
 (struct quad (subject predicate object graph-name)
   #:transparent
@@ -30,4 +32,4 @@
 
 (define (graph->quads graph)
   (let ((graph-name (if (graph-named? graph) (graph-name graph) (make-blank-node))))
-    (map (curryr statement->quad graph-name) (graph-statements graph))))
+    (set-map (curryr statement->quad graph-name) (graph-statements graph))))

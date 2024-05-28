@@ -4,39 +4,30 @@
           scribble/core
           scribble/eval
           scribble/html-properties
+          (for-label racket/contract
+          ;; --------------------------------------
+          net/url-structs
+          ;; --------------------------------------
           langtag
-          rdf/core/namespace
-          rdf/core/literal
-          rdf/core/statement
-          rdf/core/triple
-          rdf/core/quad
-          rdf/core/graph
+          ;; --------------------------------------
           rdf/core/dataset
-          rdf/core/gq
+          rdf/core/graph
           rdf/core/io
-          (for-label langtag
-                     racket/contract
-                     net/url-structs
-                     rdf/core/name
-                     rdf/core/namespace
-                     rdf/core/nsmap
-                     rdf/core/literal
-                     rdf/core/statement
-                     rdf/core/triple
-                     rdf/core/graph
-                     rdf/core/quad
-                     rdf/core/dataset
-                     rdf/core/gq
-                     rdf/core/io))
+          rdf/core/literal
+          rdf/core/name
+          rdf/core/nsmap
+          rdf/core/nsname
+          rdf/core/quad
+          rdf/core/query
+          rdf/core/resource
+          rdf/core/schema
+          rdf/core/statement
+          rdf/core/triple))
 
 @;{============================================================================}
 
 @(define example-eval
-   (make-base-eval '(require racket/bool
-                             rdf/core/name
-                             rdf/core/literal
-                             rdf/core/namespace
-                             rdf/core/nsmap)
+   (make-base-eval '(require racket/bool)
                    '(define (implies x y) (if (boolean=? x #t)
                                               (if (not (boolean=? y #t))
                                                   (raise-argument-error 'y "#t" y)
@@ -59,7 +50,7 @@
 @(define figure-flow
    (make-style "Figure"
    (list (make-css-addition "scribblings/figure.css"))))
-V
+
 @(define wide-flow
    (make-style "Wide"
    (list (make-css-addition "scribblings/wide.css"))))
@@ -221,6 +212,17 @@ model very complex structures.
  )]
 
 @;{============================================================================}
+@subsection[]{RDF Names}
+
+TBD
+
+@nested[#:style figure-flow]{
+  @image["scribblings/rdf-names.svg"]
+
+  Names in RDF
+}
+
+@;{============================================================================}
 @subsection[]{Examples}
 
 The example RDF used below is similar to that used in the figures above. It describes a simple five statement graph
@@ -350,9 +352,9 @@ local-name. Prefixed names can be translated into namespaced names by substituti
 namespace in a @tt{NamespaceMap}.
 
 @nested[#:style figure-flow]{
-  @image["scribblings/rdf-names.svg"]
+  @image["scribblings/core-name-module.svg"]
 
-  RDF Name Types
+  Name Module Overview
 }
 
 The value space for a local name is sometimes different in RDF implementations, depending on their age and
@@ -365,12 +367,13 @@ more information see @secref["Appendix__Names_Defined"].
          boolean?]{
 This predicate returns @racket[#t] if the value of @racket[v] is valid according to the SPARQL production @tt{PN_LOCAL}.
 
-@examples[
-  #:eval example-eval
-  (local-name-string? "a-valid-name")
-  (local-name-string? 'another-valid-name)
-  (local-name-string? "?")
-  (local-name-string? "")
+@examples[#:eval example-eval
+(require rdf/core/name)
+
+(local-name-string? "a-valid-name")
+(local-name-string? 'another-valid-name)
+(local-name-string? "?")
+(local-name-string? "")
 ]
 }
 
@@ -379,15 +382,14 @@ This structure provides a safe and efficient way to wrap a string that conforms 
 @racket[local-name-string?]. This ensures that the name cannot be mutated, and the predicate @racket[local-name?] is
 more efficient than parsing the string.
 
-@examples[
-  #:eval example-eval
-  (require racket/list racket/string)
-  (let ((long-name (string-join (map (lambda (_) "this-is-a-long-name")
-                                     (range 1 200))
-                                "-also-")))
-    (time (local-name-string? long-name))
-    (let ((name (string->local-name long-name)))
-      (time (local-name? name))))
+@examples[#:eval example-eval
+(require racket/list racket/string)
+(let ((long-name (string-join (map (lambda (_) "this-is-a-long-name")
+                                   (range 1 200))
+                              "-also-")))
+  (time (local-name-string? long-name))
+  (let ((name (string->local-name long-name)))
+    (time (local-name? name))))
 ]
 }
 
@@ -396,9 +398,9 @@ more efficient than parsing the string.
          local-name-string?]{
 Returns the local name as a string.
 
-@examples[
-  #:eval example-eval
-  (local-name->string (string->local-name "a-valid-name"))
+@examples[#:eval example-eval
+(require rdf/core/name)
+(local-name->string (string->local-name "a-valid-name"))
 ]
 }
 
@@ -411,169 +413,282 @@ The following table shows how different combinations of namespace, prefix, local
 #:column-properties '(top top top top (top center))
 (list (list @bold{function} @bold{from} @bold{add} @bold{into} @bold{map?})
 
-      (list @racket[namespace+name->url] @racket[namespace?] @racket[local-name?] @racket[url?] @para{No})
-      (list @racket[namespace+name->prefixed-name] @racket[namespace?] @racket[local-name?] @racket[prefixed-name?] @para{Yes})
+      (list @racket[resource-append-name] @racket[resource?] @racket[local-name?] @racket[url?] @para{No})
+      (list @racket[namespace+name->prefixed-name] @racket[resource?] @racket[local-name?] @racket[prefixed-name?] @para{Yes})
 
-      (list @racket[nsname->url] @racket[nsname?] "" @racket[url?] @para{No})
+      (list @racket[nsname->resource] @racket[nsname?] "" @racket[resource?] @para{No})
       (list @racket[nsname-make-nsname] @racket[nsname?] @racket[local-name?] @racket[nsname?] @para{No})
       (list @racket[nsname->prefixed-name] @racket[nsname?] "" @racket[prefixed-name?] @para{Yes})
 
       (list @racket[prefix+name->nsname] @racket[prefix?] @racket[local-name?] @racket[nsname?] @para{Yes})
-      (list @racket[prefix+name->url] @racket[prefix?] @racket[local-name?] @racket[url?] @para{Yes})
+      (list @racket[prefix+name->resource] @racket[prefix?] @racket[local-name?] @racket[resource?] @para{Yes})
 
       (list @racket[prefixed-name->nsname] @racket[prefixed-name?] "" @racket[nsname?] @para{Yes})
-      (list @racket[prefixed-name->url] @racket[prefixed-name?] "" @racket[url?] @para{Yes})
+      (list @racket[prefixed-name->resource] @racket[prefixed-name?] "" @racket[resource?] @para{Yes})
 )
 ]
 
 @;{============================================================================}
 @;{============================================================================}
-@section[#:style '(toc)]{Module namespace}
-@defmodule[rdf/core/namespace]
+@section[#:style '(toc)]{Module resource}
+@defmodule[rdf/core/resource]
 
-This module provides types corresponding to a namespace identifier (IRI), as well as a namespaced name.
+TBD
+
+@nested[#:style figure-flow]{
+  @image["scribblings/core-resource-module-ov.svg"]
+
+  Resource Module Overview
+}
 
 @local-table-of-contents[]
 
 @;{============================================================================}
-@subsection[]{Namespaces}
+@subsection[]{URL Procedures}
+
+The following functions are defined as aliases of their URL counterparts.
+
+@deftogether[(
+@defthing[make-resource
+          (-> (or/c #f string?)
+              (or/c #f string?)
+              (or/c #f string?)
+              (or/c #f exact-nonnegative-integer?)
+              boolean?
+              (listof path/param?)
+              (listof (cons/c symbol? (or/c #f string?)))
+              (or/c #f string?)
+              resource?)]
+@defthing[resource? (-> any/c boolean?) ]
+@defthing[resource-scheme
+          (-> resource? (or/c #f string?))]
+@defthing[resource-user
+          (-> resource? (or/c #f string?))]
+@defthing[resource-host
+          (-> resource? (or/c #f string?))]
+@defthing[resource-path-absolute?
+          (-> resource? boolean?)]
+@defthing[resource-path
+          (-> resource? (listof path/param?))]
+@defthing[resource-query
+          (-> resource? (listof (cons/c symbol? (or/c #f string?))))]
+@defthing[resource-fragment
+          (-> resource? (or/c #f string?))]
+@defthing[string->resource
+          (-> string? resource?)]
+@defthing[resource->string
+          (-> resource? string?)]
+@defthing[combine-resource/relative
+          (-> resource? string? resource?)]
+)]
+
+@;{============================================================================}
+@subsection[]{Resource Predicates}
 
 @defproc[#:kind "predicate"
-         (url-absolute?
-          [val any/c])
-         boolean?]{
-Predicate to check that the value @italic{val} is a @racket[url?], and is an absolute URI, not relative.
+         (resource-absolute? [val any/c]) boolean?]{
+Returns @racket[#t] if @racket[val] is a @racket[resource?] @bold{and} is an absolute URI. An absolute URI
+is defined as having a scheme, FQDN for the host, and an absolute path.
 
-@examples[
-  #:eval example-eval
-  (require net/url-string)
-  (url-absolute? (string->url "http://example.com/some/path"))
-  (url-absolute? (string->url "/some/other/path"))
+@examples[#:eval example-eval
+(require racket/function racket/list rdf/core/resource)
+
+(filter
+  (compose resource-absolute? string->resource)
+  '("http://example.com"
+    "http://example.com/"
+    "http://example.com/name"
+    "http://example.com/name#other"
+    "http://example.com/name#"
+    "example.com:80"
+    "/name"
+    "#other"
+    "name"
+    "other"
+    ""))
 ]
 }
 
 @defproc[#:kind "predicate"
-         (namespace-url?
-          [val any/c])
-         boolean?]{
-Predicate to check that the value @italic{val} is a @racket[url-absolute?], @bold{and} either ends in a path separator
-@tt{"/"} or an empty fragment identifier @tt{"#"}.
+         (resource-maybe-namespace? [val any/c]) boolean?]{
+Returns @racket[#t] if @racket[val] is a @racket[resource?] @bold{and} would be a valid namespace URI. A
+namespace URI is @racket[resource-absolute?], has an empty path, a path that ends in @tt{"/"}, or the empty
+fragment @tt{"#"}.
 
-@examples[
-  #:eval example-eval
-  (require net/url-string)
-  (namespace-url? (string->url "/some/other/path"))
-  (namespace-url? (string->url "http://example.com/some/path"))
-  (namespace-url? (string->url "http://example.org/schema/nspace#"))
-  (namespace-url? (string->url "http://example.org/schema/nspace/"))
-  (namespace-url? (string->url "http://example.org/"))
+@examples[#:eval example-eval
+(require racket/function racket/list rdf/core/resource)
+
+(filter
+  (compose resource-maybe-namespace? string->resource)
+  '("http://example.com"
+    "http://example.com/"
+    "http://example.com/name"
+    "http://example.com/name#other"
+    "http://example.com/name#"
+    "example.com:80"
+    "/name"
+    "#other"
+    "name"
+    "other"
+    ""))
 ]
 }
 
-@; ---------- struct namespace  ----------
+@defproc[#:kind "predicate"
+         (resource-maybe-nsname? [val any/c]) boolean?]{
+Returns @racket[#t] if @racket[val] is a @racket[resource?] @bold{and} would be a valid namespaced-name. A
+namespaced-name is a @racket[resource-absolute?], and either has a path ending in a @racket[local-name-string?]
+value or a fragment that is a @racket[local-name-string?].
 
-@defstruct*[namespace () #:constructor-name url->namespace]{
-This structure provides a safe and efficient way to wrap a @racket[url?] that conforms to the predicate
-@racket[namespace-url?]. This ensures that the namespace cannot be mutated, and the predicate @racket[namespace?] is
-more efficient than parsing the URI (see @racket[local-name?] for a comparison).
+@examples[#:eval example-eval
+(require racket/function racket/list rdf/core/resource)
+
+(filter
+  (compose resource-maybe-nsname? string->resource)
+  '("http://example.com"
+    "http://example.com/"
+    "http://example.com/name"
+    "http://example.com/name#other"
+    "http://example.com/name#"
+    "example.com:80"
+    "/name"
+    "#other"
+    "name"
+    "other"
+    ""))
+]
 }
 
-@defproc[#:kind "constructor"
-         (string->namespace
-          [url string?])
-         namespace?]{
-Returns a new @racket[namespace?] structure by parsing the provided @racket[url] string.
+@defproc[#:kind "predicate"
+         (resource-name-only? [val any/c]) boolean?]{
+Returns @racket[#t] if @racket[val] is a @racket[resource?] @bold{and} either has only a path with a single
+@racket[local-name-string?] component, or only a @racket[local-name-string?] fragment.
+
+@examples[#:eval example-eval
+(require racket/function racket/list rdf/core/resource)
+
+(filter
+  (compose resource-name-only? string->resource)
+  '("http://example.com"
+    "http://example.com/"
+    "http://example.com/name"
+    "http://example.com/name#other"
+    "http://example.com/name#"
+    "example.com:80"
+    "/name"
+    "#other"
+    "name"
+    "other"
+    ""))
+]
 }
 
-@defproc[(namespace->url
-          [ns namespace?])
-         namespace-url?]{
-Returns the namespace URI as a @racket[url?] structure.
-}
+@defproc[#:kind "predicate"
+         (resource-empty? [val any/c]) boolean?]{
+Returns @racket[#t] if @racket[val] is a @racket[resource?] @bold{and} has no content whatsoever.
 
-@defproc[(namespace->string
-          [ns namespace?])
-         string?]{
-Returns a string representation of the namespace @racket[ns] URI.
-}
+@examples[#:eval example-eval
+(require racket/function racket/list rdf/core/resource)
 
-@defproc[(namespace+name->url
-          [ns namespace?]
-          [name (or/c local-name-string? local-name?)])
-         url-absolute?]{
-Returns a new URI by appending the value of @racket[name] to the URI value of @racket[ns].
-
-@examples[
-  #:eval example-eval
-  (require net/url-string)
-  (url->string
-    (namespace+name->url
-      (string->namespace "http://example.com/schema/things#")
-      "ThingOne"))
+(filter
+  (compose resource-empty? string->resource)
+  '("http://example.com"
+    "http://example.com/"
+    "http://example.com/name"
+    "http://example.com/name#other"
+    "http://example.com/name#"
+    "example.com:80"
+    "/name"
+    "#other"
+    "name"
+    "other"
+    ""))
 ]
 }
 
 @;{============================================================================}
-@subsection[]{Namespaced Names}
+@subsection[]{Resource Operations}
 
-A @racket[namespaced-name] comprises a name and corresponding namespace, commonly noted as a tuple
+@defproc[(resource->namespace+name
+          [val resource?])
+         (values (or/c #f resource?)
+                 (or/c #f local-name-string?))]{
+Split a resource into a namespace @racket[resource?] and a local name (@racket[local-name-string?]).
+}
+
+@defproc[(resource-namespace [val resource-absolute?]) (or/c #f resource-absolute?)]{
+Returns the namespace part of @racket[val].
+}
+
+@defproc[(resource-name [val resource-absolute?]) (or/c #f local-name-string?)]{
+Returns the local name part of @racket[val].
+}
+
+@defproc[(resource-append-name
+          [val resource-absolute?]
+          [name (or/c local-name? local-name-string?)])
+         resource?]{
+Returns a new @racket[resource?] by appending the value of @racket[name] to the resource @racket[val]. 
+}
+
+@;{============================================================================}
+@;{============================================================================}
+@section[#:style '(toc)]{Module nsname}
+@defmodule[rdf/core/nsname]
+
+A @italic{namespaced name} comprises a name and corresponding namespace, commonly noted as a tuple
 @tt{(namespace, local-name)}.
 
+@nested[#:style figure-flow]{
+  @image["scribblings/core-nsname-module-ov.svg"]
+
+  NSName Module Overview
+}
+
 @defstruct*[nsname
-            ([namespace namespace?]
+            ([namespace resource?]
              [name local-name?])]{
 The @racket[namespace] and @racket[local-name] pair.
 
-@examples[
-  #:eval example-eval
-  (require net/url-string)
-  (let ((ex-name (nsname (string->namespace "http://example.org/schema/nspace/")
-                         (string->local-name "Name"))))
-    (displayln (nsname-namespace ex-name))
-    (displayln (nsname-name ex-name)))
+@examples[#:eval example-eval
+(require rdf/core/name
+         rdf/core/nsname
+         rdf/core/resource)
+
+(let ((ex-name (nsname (string->resource "http://example.org/schema/nspace/")
+                       (string->local-name "Name"))))
+  (displayln (nsname-namespace ex-name))
+  (displayln (nsname-name ex-name)))
 ]
 }
 
 @defproc[#:kind "constructor"
          (make-nsname
-          [namespace (or/c string? namespace-url? namespace?)]
+          [namespace (or/c string? resource?)]
           [name (or/c local-name-string? local-name?)])
-         name?]{
+         nsname?]{
 Returns a new @racket[nsname] from the @racket[namespace] and the value of @racket[name].
 This is a wrapper around the @racket[nsname] constructor and takes a relaxed set of types for ease of use.
 
-@examples[
-  #:eval example-eval
-  (require net/url-string)
-  (let ((ex-name (make-nsname "http://example.org/schema/nspace/" "Name")))
-    (displayln (nsname-namespace ex-name))
-    (displayln (nsname-name ex-name)))
+@examples[#:eval example-eval
+(require rdf/core/nsname)
+(let ((ex-name (make-nsname "http://example.org/schema/nspace/" "Name")))
+  (displayln (nsname-namespace ex-name))
+  (displayln (nsname-name ex-name)))
 ]
 }
 
-@defproc[(nsname->url
-          [nsname nsname?])
-         url-absolute?]{
-Returns a new URI concatenating the name's namespace IRI and local name values.
+@defproc[(resource->nsname [resource resource-absolute?]) (or/c nsname? #f)]{
+Returns a new @racket[nsname] from the components returned by calling @racket[resource->namespace+name]
+with the value @racket[resource].
 
-@examples[
-  #:eval example-eval
-  (nsname->url
-   (url->nsname
-    (string->url "http://example.org/schema/nspace#name")))
-]
-}
-
-@defproc[(nsname->string
-          [nsname nsname?])
-         string?]{
-Returns a new string concatenating the name's namespace IRI and local name values.
-
-@examples[
-  #:eval example-eval
-  (nsname->string
-   (url->nsname
-    (string->url "http://example.org/schema/nspace#name")))
+@examples[#:eval example-eval
+(resource->nsname (string->resource "http://example.org/schema/nspace#name"))
+(resource->nsname (string->resource "http://example.org/schema/nspace/name"))
+(resource->namespace+name (string->resource "http://example.org/schema/nspace#"))
+(resource->namespace+name (string->resource "http://example.org/schema/nspace/name/"))
+(resource->namespace+name (string->resource "http://example.org/"))
+(resource->namespace+name (string->resource "http://example.org"))
 ]
 }
 
@@ -583,48 +698,37 @@ Returns a new string concatenating the name's namespace IRI and local name value
          nsname?]{
 Returns a new @racket[nsname?] concatenating the namespace IRI from @racket[from] and @racket[name].
 
-@examples[
-  #:eval example-eval
-  (require net/url-string)
-  (let* ((ex-name (make-nsname "http://example.org/schema/nspace/" "Name"))
-         (new-name (nsname-make-nsname ex-name "New")))
-    (displayln (format "~a => ~a"
-                       (local-name->string (nsname-name ex-name))
-                       (local-name->string (nsname-name new-name)))))
+@examples[#:eval example-eval
+(require rdf/core/nsname)
+(let* ((ex-name (make-nsname "http://example.org/schema/nspace/" "Name"))
+       (new-name (nsname-make-nsname ex-name "New")))
+  (displayln (format "~a => ~a"
+                     (local-name->string (nsname-name ex-name))
+                     (local-name->string (nsname-name new-name)))))
 ]
 }
 
-@defproc[(url->namespace+name
-          [url url-absolute?])
-         (or/c (cons/c url-absolute? string?) #f)]{
-If the value of @racket[url] has a fragment part, return @racket[url] minus the fragment as the namespace and the
-fragment value as the name. If the value of @racket[url] has a path with a final segment, return @racket[url] minus the
-final path segment as the namespace and the path's final segment value as the name. If neither of these conditions are
-met the URI is not a valid namespaced-name and the value @racket[#f] is returned.
+@defproc[(nsname->resource
+          [nsname nsname?])
+         resource?]{
+Returns a new URI concatenating the name's namespace IRI and local name values.
 
-@examples[
-  #:eval example-eval
-  (url->namespace+name (string->url "http://example.org/schema/nspace#name"))
-  (url->namespace+name (string->url "http://example.org/schema/nspace#"))
-  (url->namespace+name (string->url "http://example.org/schema/nspace/name"))
-  (url->namespace+name (string->url "http://example.org/schema/nspace/name/"))
-  (url->namespace+name (string->url "http://example.org/"))
-  (url->namespace+name (string->url "http://example.org"))
+@examples[#:eval example-eval
+(nsname->resource
+ (resource->nsname
+  (string->resource "http://example.org/schema/nspace#name")))
 ]
 }
 
-@defproc[(url->nsname [url url-absolute?]) nsname?]{
-Returns a new @racket[nsname] from the components returned by calling @racket[url->namespace+name] with the value
-@racket[url].
+@defproc[(nsname->string
+          [nsname nsname?])
+         string?]{
+Returns a new string concatenating the name's namespace IRI and local name values.
 
-@examples[
-  #:eval example-eval
-  (url->nsname (string->url "http://example.org/schema/nspace#name"))
-  (url->nsname (string->url "http://example.org/schema/nspace/name"))
-  (url->namespace+name (string->url "http://example.org/schema/nspace#"))
-  (url->namespace+name (string->url "http://example.org/schema/nspace/name/"))
-  (url->namespace+name (string->url "http://example.org/"))
-  (url->namespace+name (string->url "http://example.org"))
+@examples[#:eval example-eval
+(nsname->string
+ (resource->nsname
+  (string->resource "http://example.org/schema/nspace#name")))
 ]
 }
 
@@ -636,6 +740,12 @@ Returns a new @racket[nsname] from the components returned by calling @racket[ur
 Namespace maps are used to create qualified names in serialization formats such as Turtle, or SPARQL. A namespace map
 allows bi-directional lookups between the @racket[namespace] URI and @racket[prefix].
 
+@nested[#:style figure-flow]{
+  @image["scribblings/core-nsmap-module-ov.svg"]
+
+  Namespace Module Overview
+}
+
 @local-table-of-contents[]
 
 @;{============================================================================}
@@ -643,6 +753,12 @@ allows bi-directional lookups between the @racket[namespace] URI and @racket[pre
 
 A @racket[prefix] is the string mapped to a namespace in a namespace map. This prefix can be used in place of the
 complete namespace URI.
+
+@nested[#:style figure-flow]{
+  @image["scribblings/core-nsmap-module-prefixes.svg"]
+
+  Namespace Module -- Prefixes
+}
 
 @defproc[#:kind "predicate"
          (prefix-string? [v any/c]) boolean?]{
@@ -676,8 +792,9 @@ Returns an @italic{empty} prefix name.
 @defproc[#:kind "predicate"
          (prefix-empty? [v any/c]) boolean?]{
 
-@examples[
-  #:eval example-eval
+@examples[#:eval example-eval
+(require rdf/core/nsmap)
+
 (prefix-empty? (string->prefix "rdf:"))
 (prefix-empty? (string->prefix ":"))
 (prefix-empty? (empty-prefix))
@@ -688,8 +805,9 @@ Returns an @italic{empty} prefix name.
           [nsprefix prefix?])
          string?]{
 
-@examples[
-  #:eval example-eval
+@examples[#:eval example-eval
+(require rdf/core/nsmap)
+
 (prefix->string (string->prefix "rdf:"))
 (prefix->string (string->prefix ":"))
 (prefix->string (empty-prefix))
@@ -703,33 +821,35 @@ Returns an @italic{empty} prefix name.
          nsname?]{
 Returns a new @racket[nsname] if the @racket[prefix] is in @racket[map], else @racket[#f].
 
-@examples[
-  #:eval example-eval
-  (let ((map (make-common-nsmap)))
-    (url->string
-     (nsname->url
-      (prefix+name->nsname
-       (string->prefix "dcterms:")
-       (string->local-name "description")
-       map))))
+@examples[#:eval example-eval
+(require rdf/core/nsmap)
+
+(let ((namespace-map (make-common-nsmap)))
+  (resource->string
+   (nsname->resource
+    (prefix+name->nsname
+     (string->prefix "dcterms:")
+     (string->local-name "description")
+     namespace-map))))
 ]
 }
 
-@defproc[(prefix+name->url
+@defproc[(prefix+name->resource
           [prefix namespace-prefix?]
           [name local-name-string?]
           [map nsmap?])
          url-absolute?]{
 Returns a new @racket[url] if @racket[prefix] is in @racket[map], else @racket[#f].
 
-@examples[
-  #:eval example-eval
-  (let ((map (make-common-nsmap)))
-    (url->string
-     (prefix+name->url
-      (string->prefix "dcterms:")
-      (string->local-name "description")
-      map)))
+@examples[#:eval example-eval
+(require rdf/core/nsmap)
+
+(let ((namespace-map (make-common-nsmap)))
+  (resource->string
+   (prefix+name->resource
+    (string->prefix "dcterms:")
+    (string->local-name "description")
+    namespace-map)))
 ]
 }
 
@@ -737,6 +857,12 @@ Returns a new @racket[url] if @racket[prefix] is in @racket[map], else @racket[#
 @subsection[]{Prefixed Names}
 
 A @racket[prefixed-name] comprises a name and corresponding prefix, commonly noted as a tuple @tt{(prefix, local-name)}.
+
+@nested[#:style figure-flow]{
+  @image["scribblings/core-nsmap-module-prefixed-names.svg"]
+
+  Namespace Module -- Prefixed Names
+}
 
 @defthing[prefixed-name-separator char?]{
 The colon character used to separate the prefix and local name parts of a prefixed name.
@@ -762,8 +888,9 @@ The @racket[prefix] and @racket[local-name] pair.
          prefixed-name?]{
 TBD
 
-@examples[
-  #:eval example-eval
+@examples[#:eval example-eval
+(require rdf/core/nsmap)
+
 (prefixed-name->string
  (make-prefixed-name (string->prefix "rdf:") "Hello"))
 (prefixed-name->string
@@ -793,10 +920,10 @@ TBD
 See @racket[prefix+name->nsname].
 }
 
-@defproc[(prefixed-name->url
+@defproc[(prefixed-name->resource
           [name prefixed-name?]
           [nsmap nsmap?])
-         (or/c url-absolute? #f)]{
+         (or/c resource-absolute? #f)]{
 See @racket[prefix+name->url].
 }
 
@@ -808,36 +935,49 @@ See @racket[namespace+name->prefixed-name].
 }
 
 @defproc[(namespace+name->prefixed-name
-          [ns namespace?]
+          [ns resource?]
           [name local-name-string?]
           [map nsmap?])
          prefixed-name?]{
 Returns a new @racket[prefixed-name] if @racket[ns] is in @racket[map], else @racket[#f].
 
-@examples[
-  #:eval example-eval
-  (let ((map (make-common-nsmap)))
-    (prefixed-name->string
-     (namespace+name->prefixed-name
-      (string->namespace "http://purl.org/dc/terms/")
-      (string->local-name "description")
-      map)))
+@examples[#:eval example-eval
+(require rdf/core/nsmap)
+
+(let ((namespace-map (make-common-nsmap)))
+  (prefixed-name->string
+   (namespace+name->prefixed-name
+    (string->resource "http://purl.org/dc/terms/")
+    (string->local-name "description")
+    namespace-map)))
 ]
 }
 
 @;{============================================================================}
-@subsection[]{Namespace Map}
+@subsection[]{Namespace Maps}
 
 A namespace map is essential in serializing and deserializing RDF datasets, graphs, and statements.
 
+@nested[#:style figure-flow]{
+  @image["scribblings/core-nsmap-module-nsmaps.svg"]
+
+  Namespace Module -- Namespace Maps
+}
+
 @defstruct*[nsmap ()]{
-This struct wraps a @racket[hash] between @racket[prefix?] and @racket[namespace?] values.
+This struct wraps a @racket[hash] between @racket[prefix?] and @racket[resource?] values.
 }
 
 @defproc[#:kind "constructor"
          (make-rdf-only-nsmap)
          nsmap?]{
 Returns a new @racket[nsmap] containing a mapping for the RDF namespace only.
+}
+
+@defproc[#:kind "constructor"
+         (make-rdf+xsd-nsmap)
+         nsmap?]{
+Returns a new @racket[nsmap] containing a mapping for the RDF and XML Schema namespaces only.
 }
 
 @defproc[#:kind "constructor"
@@ -848,7 +988,7 @@ Returns a new @racket[nsmap] containing mappings for commonly used namespaces.
 
 @defproc[#:kind "constructor"
          (make-nsmap
-          [assocs (listof (cons/c prefix? namespace?)) '()])
+          [assocs (listof (cons/c prefix? resource?)) '()])
          nsmap?]{
 Returns a new @racket[nsmap] containing the mappings in @racket[assocs].
 }
@@ -859,10 +999,11 @@ Returns a new @racket[nsmap] containing the mappings in @racket[assocs].
          boolean?]{
 Returns @racket[#t] if @racket[map] contains no mapping values.
 
-@examples[
-#:eval example-eval
-(let ((map (make-nsmap)))
-  (iff (nsmap-empty? map) (= (nsmap-count map) 0)))
+@examples[#:eval example-eval
+(require rdf/core/nsmap)
+
+(let ((namespace-map (make-nsmap)))
+  (iff (nsmap-empty? namespace-map) (= (nsmap-count namespace-map) 0)))
 ]
 }
 
@@ -871,10 +1012,31 @@ Returns @racket[#t] if @racket[map] contains no mapping values.
          exact-nonnegative-integer?]{
 Returns the number of mapping values in @racket[map].
 
-@examples[
-#:eval example-eval
-(let ((map (make-common-nsmap)))
-  (iff (not (nsmap-empty? map)) (> (nsmap-count map) 0)))
+@examples[#:eval example-eval
+(require rdf/core/nsmap)
+
+(let ((namespace-map (make-common-nsmap)))
+  (iff (not (nsmap-empty? namespace-map)) (> (nsmap-count namespace-map) 0)))
+]
+}
+
+@defproc[(nsmap-shorten
+          [map nsmap?]
+          [url url?])
+         (or/c prefixed-name? prefix? url?)]{
+This function will attempt to produce a @racket[prefixed-name] from the provided @racket[url], if the namespace value
+returned by @racket[url->namespace+name] is present in @racket[map]. If no mapping is found the original url value is
+returned.
+
+@examples[#:eval example-eval
+(require rdf/core/nsmap)
+
+(nsmap-shorten (make-common-nsmap)
+               (string->resource "http://www.w3.org/2000/01/rdf-schema#comment"))
+(nsmap-shorten (make-common-nsmap)
+               (string->resource "http://www.w3.org/2000/01/rdf-schema#"))
+(nsmap-shorten (make-common-nsmap)
+               (string->resource "http://www.w3.org/oops/rdf-schema#"))
 ]
 }
 
@@ -888,8 +1050,8 @@ Returns @racket[#t] iff the namespace @racket[map] contains a namespace value fo
 
 @defproc[(nsmap-ref-default
           [map nsmap?])
-         (or/c namespace? #f)]{
-Returns the @racket[namespace?] associated with the default prefix @tt{":"}, or @racket[#f] if none exists.
+         (or/c resource? #f)]{
+Returns the @racket[resource?] associated with the default prefix @tt{":"}, or @racket[#f] if none exists.
 }
 
 @defproc[(nsmap-has-prefix?
@@ -902,21 +1064,21 @@ Returns @racket[#t] iff the @racket[map] contains a namespace value for @racket[
 @defproc[(nsmap-ref
           [map nsmap?]
           [prefix prefix?])
-         (or/c namespace? #f)]{
-Returns the @racket[namespace?] associated with @racket[prefix], or @racket[#f] if none exists.
+         (or/c resource? #f)]{
+Returns the @racket[resource?] associated with @racket[prefix], or @racket[#f] if none exists.
 }
 
 @defproc[(nsmap-ref!
           [map nsmap?]
           [prefix prefix?]
-          [to-set namespace?])
-         (or/c namespace? #f)]{
+          [to-set resource?])
+         (or/c resource? #f)]{
 TBD
 }
 
 @defproc[(nsmap-set-default!
           [map nsmap?]
-          [url namespace?])
+          [url resource?])
          void?]{
 TBD
 }
@@ -924,7 +1086,7 @@ TBD
 @defproc[(nsmap-set!
           [map nsmap?]
           [prefix prefix?]
-          [url namespace?])
+          [url resource?])
          void?]{
 TBD
 }
@@ -939,7 +1101,7 @@ TBD
 @defproc[(nsmap-update!
           [map nsmap?]
           [prefix prefix?]
-          [updater (-> namespace? namespace)])
+          [updater (-> resource? namespace)])
          boolean?]{
 TBD
 }
@@ -950,10 +1112,19 @@ TBD
 TBD
 }
 
-@defproc[(nsmap-has-url?
+@;{============================================================================}
+
+@defproc[(nsmap-has-resource?
           [map nsmap?]
-          [url namespace?])
+          [url resource?])
          boolean?]{
+TBD
+}
+
+@defproc[(nsmap-find-namespace
+          [map nsmap?]
+          [url resource?])
+         (or/c (cons/c prefix? resource?) #f)]{
 TBD
 }
 
@@ -968,13 +1139,13 @@ TBD
 
 @defproc[(nsmap-map
           [map nsmap?]
-          [proc (-> ncname? namespace? any/c)]
+          [proc (-> prefix? namespace? any/c)]
           [try-order? any/c #f])
          (listof any/c)]{
 TBD
 }
 
-@defproc[(nsmap-names
+@defproc[(nsmap-prefixes
           [map nsmap?]
           [try-order? any/c #f])
          (listof prefix?)]{
@@ -1009,6 +1180,12 @@ form.
 Note, there is only a single case where both datatype IRI and language tag are present at the same time, when the
 language tag is present the value is @bold{by definition} typed as @tt{rdf:langString}.
 
+@nested[#:style figure-flow]{
+  @image["scribblings/core-literal-module.svg"]
+
+  Literal Module Overview
+}
+
 @local-table-of-contents[]
 
 @;{============================================================================}
@@ -1027,9 +1204,10 @@ This structure combines the three values @italic{lexical-form}, @italic{datatype
          literal?]{
 Returns a new @racket[literal] as an untyped, non-language-tagged string.
 
-@examples[
-  #:eval example-eval
-  (make-untyped-literal "22")
+@examples[#:eval example-eval
+(require rdf/core/literal)
+
+(make-untyped-literal "22")
 ]
 }
 
@@ -1040,9 +1218,10 @@ Returns a new @racket[literal] as an untyped, non-language-tagged string.
          literal?]{
 Returns a new @racket[literal] as a typed, non-language-tagged string.
 
-@examples[
-  #:eval example-eval
-  (make-typed-literal "22" (string->url "http://www.w3.org/2001/XMLSchema#byte"))
+@examples[#:eval example-eval
+(require rdf/core/literal)
+
+(make-typed-literal "22" (string->resource "http://www.w3.org/2001/XMLSchema#byte"))
 ]
 }
 
@@ -1053,9 +1232,10 @@ Returns a new @racket[literal] as a typed, non-language-tagged string.
          literal?]{
 Returns a new @racket[literal] as an untyped, language-tagged string.
 
-@examples[
-  #:eval example-eval
-  (make-lang-string-literal "22" "en")
+@examples[#:eval example-eval
+(require rdf/core/literal)
+
+(make-lang-string-literal "22" "en")
 ]
 }
 
@@ -1178,6 +1358,12 @@ This module models a single RDF statement (@italic{subject}, @italic{predicate},
 interface that may be implemented by other concrete structures. It therefore also describes these components themselves
 with predicates and structures of their own.
 
+@nested[#:style figure-flow]{
+  @image["scribblings/core-statement-module-ov.svg"]
+
+  Statement Module Overview
+}
+
 @local-table-of-contents[]
 
 @;{============================================================================}
@@ -1201,7 +1387,11 @@ TBD
 }
 
 @defstruct*[blank-node () #:omit-constructor]{
-This struct wraps a single @italic{label} value of type @racket[local-name?].
+This struct wraps a single @italic{label} value of type @racket[local-name?]. This label value is not directly
+accessible, however it is returned by @racket[blank-node->string].
+
+The structure also implements the @racket[gen:equal+hash] generic methods allowing @racket[equal?] and
+@racket[equal-hash-code] to be used on instances.
 }
 
 @defproc[#:kind "constructor"
@@ -1214,11 +1404,37 @@ running separately may generate overlapping identifiers.
 }
 
 @defproc[(blank-node->string
-          [node blank-node?])
+          [val blank-node?])
          string?]{
+Returns the label of this blank node as a string.
+}
+
+@defproc[(blank-node<?
+          [val1 blank-node?]
+          [val2 blank-node?])
+         string?]{
+Returns @racket[#t] if blank-node @racket[val1] is less than @racket[val2] using the labels for comparison. This is
+equivalent to the following:
+
+@racketblock[
+(string<?
+  (blank-node->string val1)
+  (blank-node->string val2))
+]
+}
+
+@;{----------------------------------------------------------------------------}
+@subsubsection[]{Blank Node Labeler}
+
+@defthing[blank-node-label-maker/c contract?]{
 TBD
 }
 
+@defparam[blank-node-label-maker label-maker blank-node-label-maker/c]{
+TBD
+}
+
+@;{============================================================================}
 @subsection[]{Component Predicates}
 
 @defproc[#:kind "predicate"
@@ -1316,9 +1532,9 @@ TBD
 Turn any statement into a list of three components.
 }
 
-@defproc[(statement->reified-list
+@defproc[(statement->reified-set
           [stmt statement?])
-         (listof (list/c subject? predicate? object?))]{
+         (set/c (list/c subject? predicate? object?))]{
 Reify the statement and return a list of lists.
 }
 
@@ -1329,6 +1545,12 @@ Reify the statement and return a list of lists.
 
 The Triple type is a concrete implementation of the @racket[gen:statement] generic interface that is only the three
 standard components.
+
+@nested[#:style figure-flow]{
+  @image["scribblings/core-triple-module-ov.svg"]
+
+  Triple Module Overview
+}
 
 @local-table-of-contents[]
 
@@ -1351,18 +1573,10 @@ Convert a list of three components into a triple structure. This is the opposite
 @racket[statement->list].
 }
 
-@defproc[(reify
-          [subject subject?]
-          [predicate predicate?]
-          [object object?])
-         (listof triple?)]{
-TBD
-}
-
 @defproc[(statement->reified-triples
           [stmt statement?])
-         (listof triple?)]{
-See @racket[reify].
+         (set/c triple?)]{
+TBD
 }
 
 @;{============================================================================}
@@ -1422,10 +1636,20 @@ A graph is a, possibly named, set of statements. While the RDF semantics define 
 this implementation uses a list which provides for duplicate statements. At any time the @racket[graph->distinct-graph]
 function returns a version of the current graph with any duplicate statements removed.
 
+@nested[#:style figure-flow]{
+  @image["scribblings/core-graph-module-ov.svg"]
+
+  Tree Module Overview
+}
+
 @local-table-of-contents[]
 
 @;{============================================================================}
 @subsection[]{Graph Type}
+
+@defthing[statement-set? contract?]{
+TBD
+}
 
 @defproc[#:kind "predicate"
          (graph-name?
@@ -1437,13 +1661,17 @@ for the default graph.
 
 @defstruct*[graph
             ([name graph-name?]
-             [(statements #:mutable) statement-list?])]{
+             [(namespace-map #:mutable) namespace-map]
+             [(statements #:mutable) statement-list?]
+             [asserted boolean?])]{
 TBD
 }
 
 @defproc[#:kind "constructor"
          (unnamed-graph
-          [statements statement-list?])
+          [statements (or/c statement-list? statement-set?)]
+          [namespace-map nsmap? (make-rdf-only-nsmap)]
+          [#:asserted asserted #t])
          graph?]{
 Returns a new @racket[graph?] that has no name. In this case the value of @racket[graph-name] is @racket[#f].
 }
@@ -1451,7 +1679,9 @@ Returns a new @racket[graph?] that has no name. In this case the value of @racke
 @defproc[#:kind "constructor"
          (named-graph
           [name graph-name?]
-          [statements statement-list?])
+          [statements (or/c statement-list? statement-set?)]
+          [namespace-map nsmap? (make-rdf-only-nsmap)]
+          [#:asserted asserted #t])
          graph?]{
 Returns a new @racket[graph?] that has an explicit @italic{name}.
 }
@@ -1461,6 +1691,13 @@ Returns a new @racket[graph?] that has an explicit @italic{name}.
          subject?]{
 Return the name of the @italic{graph}, if it was created as a default graph return a newly created blank node instead.
 }
+
+@defproc[(graph-find-blank-node
+          [graph graph?])
+         blank-node?]{
+Generate a new blank node, ensuring that it does not exist in the graph already.
+}
+
 
 @;{============================================================================}
 @subsection[]{Graph Predicates & Properties}
@@ -1479,13 +1716,6 @@ Return @racket[#t] if @italic{graph} was created as a named graph.
 Return @racket[#t] if this graph contains no statements.
 }
 
-@defproc[#:kind "predicate"
-         (graph-has-duplicates?
-          [val graph?])
-         boolean?]{
-Returns @racket[#t] if the graph has duplicate statements. 
-}
-
 @defproc[(graph-count
           [graph graph?])
          exact-positive-integer?]{
@@ -1497,11 +1727,6 @@ Returns the number of statements in the graph, this does not take into account w
          exact-positive-integer?]{
 Returns the @italic{order} of the graph, or the number of vertices. For RDF a vertex is defined as any
 @racket[resource?] or @racket[blank-node?] in the graph.
-}
-
-@defproc[(graph->distinct-graph [graph graph?]) graph?]{
-Returns a new @racket[graph] where the list of statements in the source @racket[graph] have been removed. The name of
-the source is also preserved in the new copy.
 }
 
 @;{============================================================================}
@@ -1625,29 +1850,29 @@ TBD
 }
 
 @defproc[(graph-filter
-          [proc (-> statement? boolean?)]
-          [graph graph?])
+          [graph graph?]
+          [proc (-> statement? boolean?)])
          statement-list?]{
 TBD
 }
 
 @defproc[(graph-filter-by-subject
           [graph graph?]
-          [obj subject?])
+          [val subject?])
          statement-list?]{
 TBD
 }
 
 @defproc[(graph-filter-by-predicate
           [graph graph?]
-          [obj predicate?])
+          [val predicate?])
          statement-list?]{
 TBD
 }
 
 @defproc[(graph-filter-by-object
           [graph graph?]
-          [obj object?])
+          [val object?])
          statement-list?]{
 TBD
 }
@@ -1684,25 +1909,6 @@ graph is the same object as the graph passed in as the source.
 Returns @racket[#t] is a skolem IRI using the well-known path in the template above.
 }
 
-
-@;{----------------------------------------------------------------------------}
-
-@defthing[graph-tree/c contract?]{
-TBD
-}
-
-@defproc[(graph->tree
-          [graph graph?])
-         graph-tree/c]{
-TBD
-}
-
-@defproc[(statement-list->tree
-          [statements statement-list?])
-         graph-tree/c]{
-TBD
-}
-
 @;{----------------------------------------------------------------------------}
 
 @defproc[(describe-graph
@@ -1721,8 +1927,55 @@ description and VOID vocabularies.
 
 @;{============================================================================}
 @;{============================================================================}
+@section[]{Module tree}
+@defmodule[rdf/core/tree]
+
+@nested[#:style figure-flow]{
+  @image["scribblings/core-tree-module-ov.svg"]
+
+  Tree Module Overview
+}
+
+@defthing[graph-tree-twigs/c contract?]{
+TBD
+}
+
+@defthing[graph-tree-branch/c contract?]{
+TBD
+}
+
+@defthing[graph-tree/c contract?]{
+TBD
+}
+
+@defproc[(graph->tree
+          [graph graph?])
+         graph-tree/c]{
+TBD
+}
+
+@defproc[(statements->tree
+          [statements statement-set?])
+         graph-tree/c]{
+TBD
+}
+
+@defproc[(tree->statements
+          [tree graph-tree/c])
+         statement-set?]{
+TBD
+}
+
+@;{============================================================================}
+@;{============================================================================}
 @section[]{Module quad}
 @defmodule[rdf/core/quad]
+
+@nested[#:style figure-flow]{
+  @image["scribblings/core-quad-module-ov.svg"]
+
+  Namespace Module Overview
+}
 
 @defstruct*[quad
             ([subject subject?]
@@ -1754,10 +2007,22 @@ TBD
 
 Package Description Here
 
+@nested[#:style figure-flow]{
+  @image["scribblings/core-dataset-module-ov.svg"]
+
+  Dataset Module Overview
+}
+
 @local-table-of-contents[]
 
 @;{============================================================================}
 @subsection[]{Dataset Type}
+
+@nested[#:style figure-flow]{
+  @image["scribblings/core-dataset-module-ov.svg"]
+
+  Dataset Module Overview
+}
 
 @defstruct*[dataset
             ([name (or/c resource? #f)]
@@ -1774,7 +2039,7 @@ TBD
 
 @defproc[#:kind "constructor"
          (named-dataset
-          [name (or/c resource? #f)]
+          [name resource?]
           [graphs (hash/c graph-name? graph?)])
          dataset?]{
 TBD
@@ -1787,8 +2052,22 @@ TBD
 TBD
 }
 
+@defproc[#:kind "constructor"
+         (quad-set->dataset
+          [quads (set/c quad?)])
+         dataset?]{
+TBD
+}
+
 @;{============================================================================}
 @subsection[]{Dataset Predicates & Properties}
+
+@defproc[#:kind "predicate"
+         (dataset-named?
+          [ds dataset?])
+         boolean?]{
+TBD
+}
 
 @defproc[#:kind "predicate"
          (dataset-empty?
@@ -1803,18 +2082,12 @@ TBD
 TBD
 }
 
-@defproc[(dataset-order
-          [val graph?])
-         exact-positive-integer?]{
-TBD
-}
-
 @;{============================================================================}
 @subsection[]{Graph Members}
 
 @defproc[(dataset-has-named?
           [ds dataset?]
-          [name subject?])
+          [name graph-name?])
          boolean?]{
 TBD
 }
@@ -1834,14 +2107,6 @@ TBD
 @defproc[(dataset-ref
           [ds dataset?]
           [name graph-name?])
-         (or/c graph? #f)]{
-TBD
-}
-
-@defproc[(dataset-ref!
-          [ds dataset?]
-          [name graph-name?]
-          [to-set graph?])
          (or/c graph? #f)]{
 TBD
 }
@@ -1874,32 +2139,30 @@ TBD
 TBD
 }
 
+@;{============================================================================}
+
 @defproc[(dataset-map
           [ds dataset?]
-          [proc (-> graph-name? graph? any/c)]
-          [try-order? any/c #f])
+          [proc (-> graph-name? graph? any/c)])
          (listof any/c)]{
 TBD
 }
 
 @defproc[(dataset-names
-          [ds dataset?]
-          [try-order? any/c #f])
+          [ds dataset?])
          (listof graph-name?)]{
 TBD
 }
 
 @defproc[(dataset-values
-          [ds dataset?]
-          [try-order? any/c #f])
+          [ds dataset?])
          (listof graph?)]{
 TBD
 }
 
-@defproc[(dataset->list
-          [ds dataset?]
-          [try-order? any/c #f])
-         (listof (cons/c graph-name? graph?))]{
+@defproc[(dataset->stream
+          [ds dataset?])
+         (stream/c (cons/c graph-name? graph?))]{
 TBD
 }
 
@@ -1935,27 +2198,57 @@ TBD
 
 @;{============================================================================}
 @;{============================================================================}
-@section[#:style '(toc)]{Module gq}
-@defmodule[rdf/core/gq]
+@section[#:style '(toc)]{Module query}
+@defmodule[rdf/core/query]
 
 Package Description Here
 
+@nested[#:style figure-flow]{
+  @image["scribblings/core-query-module-ov.svg"]
+
+  Query Module Overview
+}
+
+@local-table-of-contents[]
 
 @;{============================================================================}
-@subsection[]{Pattern Component}
+@subsection[]{Component Patterns}
 
-@defproc[#:kind "predicate"
-         (pattern-component?
-          [val any/c])
-         boolean?]{
+@nested[#:style figure-flow]{
+  @image["scribblings/core-query-module-components.svg"]
+
+  Query Module -- Component Patterns
+}
+
+@defstruct*[comparitor
+           ([fn (-> any/c any/c boolean?)]
+            [value object?])]{
 TBD
 }
 
-@defproc[#:kind "constructor"
-         (comparitor
-          [value object?]
-          [operator procedure? equal?])
+@defproc[(comparitor-match?
+          [comp comparitor?]
+          [val object?])
          pattern-component?]{
+TBD
+}
+
+@defthing[component-pattern-kind/c flat-contract?]{
+TBD
+
+@itemlist[
+  #:style compact-list
+  @item{@racket['ignore] -- .}
+  @item{@racket['compare] -- .}
+  @item{@racket['variable] -- .}
+]
+}
+
+@defstruct*[component-pattern
+           ([kind component-pattern-kind/c]
+            [inner (or/c false?
+                 comparitor?
+                 variable-name-string?)])]{
 TBD
 }
 
@@ -1966,16 +2259,35 @@ TBD
 }
 
 @defproc[#:kind "constructor"
+         (compare
+          [fn (-> any/c any/c boolean?)]
+          [val object?])
+         component-pattern?]{
+TBD
+}
+
+@defproc[#:kind "constructor"
+         (compare/equal?
+          [val object?])
+         component-pattern?]{
+TBD
+}
+
+@defproc[#:kind "constructor"
          (variable
-          [name ncname?])
+          [name variable-name-string?])
          pattern-component?]{
 TBD
-
 
 From @cite["SPARQL11QL"], section 19.8 @italic{Grammar}:
 
 @nested[#:style 'code-inset]{
 @verbatim|{
+[108]   Var             ::= VAR1 | VAR2
+:
+[143]   VAR1            ::= '?' VARNAME
+[144]   VAR2            ::= '$' VARNAME
+:
 [164]    PN_CHARS_BASE  ::= [A-Z] | [a-z] | [#x00C0-#x00D6] | [#x00D8-#x00F6]
                           | [#x00F8-#x02FF] | [#x0370-#x037D] | [#x037F-#x1FFF]
                           | [#x200C-#x200D] | [#x2070-#x218F] | [#x2C00-#x2FEF]
@@ -1989,80 +2301,86 @@ From @cite["SPARQL11QL"], section 19.8 @italic{Grammar}:
 }
 }
 
-@defproc[#:kind "predicate"
-         (ignore? [val any/c]) boolean?]{
-TBD
-}
-
-@defproc[#:kind "predicate"
-         (comparitor? [val any/c]) boolean?]{
+@defproc[(component-pattern-match
+          [pattern component-pattern?]
+          [val object?])
+         (or/c boolean? result-cell?)]{
 TBD
 }
 
 @defproc[#:kind "predicate"
          (variable-string? [val any/c]) boolean?]{
-TBD
+Returns @racket[#t] if @racket[val] is a string that corresponds to the SPARQL @tt{Var} production.
 }
 
 @defproc[#:kind "predicate"
          (variable-name-string? [val any/c]) boolean?]{
-TBD
-}
-
-@defproc[#:kind "predicate"
-         (variable? [val any/c]) boolean?]{
-TBD
+Returns @racket[#t] if @racket[val] is a string that corresponds to the SPARQL @tt{VARNAME} production.
 }
 
 @;{============================================================================}
-@subsection[]{Statement Pattern}
+@subsection[]{Statement Patterns}
 
-@defproc[#:kind "predicate"
-         (statement-pattern? [val any/c]) boolean?]{
-TBD
+@nested[#:style figure-flow]{
+  @image["scribblings/core-query-module-statements.svg"]
+
+  Query Module -- Statement Patterns
 }
 
-@defproc[#:kind "constructor"
-         (make-statement-pattern
-          [subject pattern-component?]
-          [predicate pattern-component?]
-          [object pattern-component?])
-         statement-pattern?]{
-TBD
-}
-
-@;{============================================================================}
-@subsection[]{Pattern Matching}
-
-@defproc[(graph-query
-          [graph graph?]
-          [patterns (listof statement-pattern?)])
-         results?]{
+@defstruct*[statement-pattern
+           ([subject component-pattern?]
+            [predicate component-pattern?]
+            [object component-pattern?])]{
 TBD
 }
 
 @defproc[(statement-pattern-match
           [pattern statement-pattern?]
           [statement statement?])
-         boolean?]{
+         (or/c result-row? #f)]{
 TBD
 }
 
-@;{----------------------------------------------------------------------------}
+@;{============================================================================}
+@subsection[]{Graph Patterns & Query}
 
-@defproc[#:kind "predicate"
-         (result-variable-value? [val any/c]) boolean?]{
+@nested[#:style figure-flow]{
+  @image["scribblings/core-query-module-graphs.svg"]
+
+  Query Module -- Graph Patterns & Query
+}
+
+@defstruct*[graph-pattern
+           ([patterns (set/c statement-pattern?)])]{
+TBD
+}
+
+@defproc[(make-common-subject-pattern
+          [patterns (set/c (list/c component-pattern? component-pattern?))])
+         graph-pattern?]{
 TBD
 }
 
 @defproc[#:kind "predicate"
-         (result-statement? [val any/c]) boolean?]{
+         (result-cell? [val any/c]) boolean?]{
+TBD
+}
+
+@defproc[#:kind "predicate"
+         (result-row? [val any/c]) boolean?]{
 TBD
 }
 
 @defproc[#:kind "predicate"
          (results? [val any/c]) boolean?]{
-TBD
+Returns @racket[#t] if @racket[val] is a stream of @racket[result-row?] values.
+}
+
+@defproc[(graph-pattern-query
+          [pattern graph-pattern?]
+          [graph graph?])
+         results?]{
+Apply the graph @racket[pattern] to the statements in the @racket[graph], returning a stream of @racket[result-row?] values.
 }
 
 @;{============================================================================}
@@ -2070,31 +2388,74 @@ TBD
 @section[#:style '(toc)]{Module io}
 @defmodule[rdf/core/io]
 
-This package provides very basic capabilities for writing out RDF values useful for testing but incomplete in many
-regards.
+This package provides basic capabilities for writing RDF values. The representations supported are
+N-Triples (@cite["RDF11NT"]), N-Quads (@cite["RDF11NQ"]), Turtle (@cite["RDF11TTL"]), and
+TriG (@cite["RDF11TRIG"]). These are chosen as they can easily be combined given that the specifications
+refer to each other. The following figure shows the relationship between the various components as formatters.
 
-@defthing[import-style/c flat-contract?]{TBD}
+@nested[#:style figure-flow]{
+  @image["scribblings/core-io-module-representations.svg"]
 
-@defproc[(namespace->import-statement
-          [graph graph?]
-          [patterns (listof statement-pattern?)])
-         results?]{
-TBD
+  Core Representations
 }
 
-@;{----------------------------------------------------------------------------}
+Both N-Triple and N-Quad statement formats rely on the @italic{resource}, @italic{blank-node}, and @italic{literal}
+formats which are common to both. A degenerate form of Turtle uses N-Triples as-is, but even if the writer uses more
+compact structures the basic components are formatted in the same manner. As the statement forms are aggregated into
+N-Triple and N-Quad graph formatters these are simply lists of statements with no additional syntax. However, the
+Turtle formatter builds upon this to allow for more syntax that compacts the output and improves readability.
+
+@local-table-of-contents[]
+
+@;{============================================================================}
+@subsection[]{N-Triple Formatting}
+
+The following @italic{pseudo}-BNF describes the structure of the N-Triples representation. Note that some terminals
+are not described in detail here, the BNF is intended as informational.
+
+@nested[#:style 'code-inset]{
+@verbatim|{
+ntriple-graph   ::= triple*
+triple          ::= subject predicate object "." NEWLINE
+subject         ::= resource | blank-node
+predicate       ::= resource
+object          ::= resource | blank-node | literal
+resource        ::= "<" URI ">"
+blank-node      ::= "_:" BLANK_LABEL
+literal         ::= DQUOTE_STRING ( literal-type | literal-lang )?
+literal-type    ::= "^^" resource
+literal-lang    ::= "@" LANG_TAG
+}|}
 
 @deftogether[(
   @defproc[(write-ntriple-literal
             [val literal?]
+            [#:nsmap namespace-map nsmap? #f]
             [out output-port? (current-output-port)])
            void?]
   @defproc[(literal->ntriple-string
             [val literal?]
-            [out output-port? (current-output-port)])
+            [#:nsmap namespace-map nsmap? #f])
            string?]
 )]{
-TBD
+Write a @racket[literal?] to the provided output port, or to a string, in N-Triple syntax.
+
+@examples[#:eval example-eval
+(require rdf/core/io
+         rdf/core/literal
+         rdf/core/nsmap
+         rdf/core/v/xsd)
+
+(write-ntriple-literal (make-untyped-literal "hello"))
+(write-ntriple-literal (make-lang-string-literal "hola" "es"))
+(displayln
+  (literal->ntriple-string
+    (make-typed-literal "42" (nsname->resource xsd:short))))
+(displayln
+  (literal->ntriple-string
+    (make-typed-literal "42" (nsname->resource xsd:short))
+    #:nsmap (make-common-nsmap)))
+]
 }
 
 @;{----------------------------------------------------------------------------}
@@ -2105,63 +2466,141 @@ TBD
             [out output-port? (current-output-port)])
            void?]
   @defproc[(blank-node->ntriple-string
-            [val blank-node?]
-            [out output-port? (current-output-port)])
+            [val blank-node?])
            string?]
 )]{
-TBD
+Write a @racket[blank-node?] to the provided output port, or to a string, in N-Triple syntax.
+
+@examples[#:eval example-eval
+(require rdf/core/io
+         rdf/core/statement)
+
+(write-ntriple-blank-node (make-blank-node))
+(displayln
+  (blank-node->ntriple-string (make-blank-node "alice")))
+]
 }
 
 @deftogether[(
   @defproc[(write-ntriple-resource
             [val resource?]
+            [#:nsmap namespace-map nsmap? #f]
             [out output-port? (current-output-port)])
            void?]
   @defproc[(resource->ntriple-string
             [val resource?]
-            [out output-port? (current-output-port)])
+            [#:nsmap namespace-map nsmap? #f])
            string?]
 )]{
-TBD
+Write a @racket[resource?] to the provided output port, or to a string, in N-Triple syntax.
+
+@examples[#:eval example-eval
+(require rdf/core/io
+         rdf/core/statement)
+
+(write-ntriple-resource
+  (string->resource "http://example.com/ns/"))
+(displayln
+  (resource->ntriple-string
+    (string->resource "http://example.com/ns/")))
+]
 }
 
 @deftogether[(
   @defproc[(write-ntriple-subject
             [val subject?]
+            [#:nsmap namespace-map nsmap? #f]
             [out output-port? (current-output-port)])
            void?]
   @defproc[(subject->ntriple-string
             [val subject?]
-            [out output-port? (current-output-port)])
+            [#:nsmap namespace-map nsmap? #f])
            string?]
 )]{
-TBD
+Write a @racket[subject?] to the provided output port, or to a string, in N-Triple syntax.
+
+This uses either @racket[write-ntriple-resource] or @racket[write-ntriple-blank-node] for generation.
+
+@examples[#:eval example-eval
+(require rdf/core/io
+         rdf/core/statement)
+
+(write-ntriple-subject
+  (string->resource "http://example.com/ns/"))
+(displayln
+  (subject->ntriple-string
+    (string->resource "http://example.com/ns/")))
+
+(write-ntriple-subject (make-blank-node))
+(displayln
+  (subject->ntriple-string (make-blank-node "bob")))
+]
 }
 
 @deftogether[(
   @defproc[(write-ntriple-predicate
             [val predicate?]
+            [#:nsmap namespace-map nsmap? #f]
             [out output-port? (current-output-port)])
            void?]
   @defproc[(predicate->ntriple-string
             [val predicate?]
-            [out output-port? (current-output-port)])
+            [#:nsmap namespace-map nsmap? #f])
            string?]
 )]{
-TBD
+Write a @racket[predicate?] to the provided output port, or to a string, in N-Triple syntax.
+
+This uses the @racket[write-ntriple-resource] for generation.
+
+@examples[#:eval example-eval
+(require rdf/core/io
+         rdf/core/statement)
+
+(write-ntriple-predicate
+  (string->resource "http://example.com/ns/hasExample"))
+(displayln
+  (predicate->ntriple-string
+    (string->resource "http://example.com/ns/hasExample")))
+]
 }
 
 @deftogether[(
   @defproc[(write-ntriple-object
             [val object?]
+            [#:nsmap namespace-map nsmap? #f]
             [out output-port? (current-output-port)])
            void?]
   @defproc[(object->ntriple-string
             [val object?]
-            [out output-port? (current-output-port)])
+            [#:nsmap namespace-map nsmap? #f])
            string?]
 )]{
-TBD
+Write a @racket[object?] to the provided output port, or to a string, in N-Triple syntax.
+
+This uses either @racket[write-ntriple-resource], @racket[write-ntriple-blank-node], or
+@racket[write-ntriple-literal] for generation.
+
+@examples[#:eval example-eval
+(require rdf/core/io
+         rdf/core/literal
+         rdf/core/statement)
+
+(write-ntriple-object
+  (string->resource "http://example.com/ns/hasExample"))
+(displayln
+  (object->ntriple-string
+    (string->resource "http://example.com/ns/hasExample")))
+
+(write-ntriple-object (make-blank-node))
+(displayln
+  (object->ntriple-string (make-blank-node "carlos")))
+
+(write-ntriple-object (make-untyped-literal "hello"))
+(write-ntriple-object (make-lang-string-literal "hola" "es"))
+(displayln
+  (object->ntriple-string
+    (make-typed-literal "42" (nsname->resource xsd:short))))
+]
 }
 
 @;{----------------------------------------------------------------------------}
@@ -2169,29 +2608,19 @@ TBD
 @deftogether[(
   @defproc[(write-ntriple-statement
             [val statement?]
+            [#:nsmap namespace-map nsmap? #f]
             [out output-port? (current-output-port)])
            void?]
   @defproc[(statement->ntriple-string
             [val statement?]
-            [out output-port? (current-output-port)])
+            [#:nsmap namespace-map nsmap? #f])
            string?]
 )]{
-TBD
-}
+Write a @racket[statement?] to the provided output port, or to a string, in N-Triple syntax.
 
-@deftogether[(
-  @defproc[(write-nquad-statement
-            [val object?]
-            [graph-name graph-name?]
-            [out output-port? (current-output-port)])
-           void?]
-  @defproc[(statement->nquad-string
-            [val object?]
-            [graph-name graph-name?]
-            [out output-port? (current-output-port)])
-           string?]
-)]{
-TBD
+This uses @racket[write-ntriple-subject], @racket[write-ntriple-predicate], and
+@racket[write-ntriple-object] for generation.
+
 }
 
 @;{----------------------------------------------------------------------------}
@@ -2202,12 +2631,43 @@ TBD
             [out output-port? (current-output-port)])
            void?]
   @defproc[(graph->ntriple-string
-            [val graph?]
-            [out output-port? (current-output-port)])
+            [val graph?])
            string?]
 )]{
-TBD
+Write a @racket[graph?] to the provided output port, or to a string, in N-Triple syntax.
 }
+
+@;{============================================================================}
+@subsection[]{N-Quad Formatting}
+
+The following BNF demonstrates how the N-Quad is built upon the N-Triple with the addition of the graph name
+as a fourth component.
+
+@nested[#:style 'code-inset]{
+@verbatim|{
+quad-graph      ::= quad*
+quad            ::= subject predicate object graph-name "." NEWLINE
+graph-name      ::= resource | blank-node
+}|}
+
+@deftogether[(
+  @defproc[(write-nquad-statement
+            [graph-name graph-name?]
+            [val statement?]
+            [#:nsmap namespace-map nsmap? #f]
+            [out output-port? (current-output-port)])
+           void?]
+  @defproc[(statement->nquad-string
+            [graph-name graph-name?]
+            [val statement?]
+            [#:nsmap namespace-map nsmap? #f])
+           string?]
+)]{
+Write a @racket[statement?] to the provided output port, or to a string, in N-Quad syntax. The provided
+@racket[graph-name?] represents the fourth element of the quad.
+}
+
+@;{----------------------------------------------------------------------------}
 
 @deftogether[(
   @defproc[(write-nquad-graph
@@ -2215,209 +2675,460 @@ TBD
             [out output-port? (current-output-port)])
            void?]
   @defproc[(graph->nquad-string
-            [val graph?]
-            [out output-port? (current-output-port)])
+            [val graph?])
            string?]
 )]{
-TBD
+Write a @racket[graph?] to the provided output port, or to a string, in N-Quad syntax.
 }
 
 @;{----------------------------------------------------------------------------}
 
 @deftogether[(
-  @defproc[(write-ntriple-dataset
+  @defproc[(write-nquad-dataset
             [val dataset?]
             [out output-port? (current-output-port)])
            void?]
-  @defproc[(dataset->ntriple-string
-            [val dataset?]
-            [out output-port? (current-output-port)])
+  @defproc[(dataset->nquad-string
+            [val dataset?])
            string?]
 )]{
-TBD
+Write a @racket[dataset?] to the provided output port, or to a string, in N-Quad syntax.
 }
 
-@;{----------------------------------------------------------------------------}
+@;{============================================================================}
+@subsection[]{Turtle/TriG Formatting}
+
+The Turtle/TriG writer provided in the core emits a sub-set of the Turtle syntax, as described below.
+
+@nested[#:style 'code-inset]{
+@verbatim|{
+turtle-graph    ::= turtle-header turtle-content
+turtle-header   ::= base-decl? namespace-decl*
+turtle-content  ::= ( triple | statements )*
+base-decl       ::= "@base" resource "."
+namespace-decl  ::= "@prefix" prefix resource "."
+prefix          ::= LOCAL_NAME? ":"
+statements      ::= subject predicates "."
+predicates      ::= predicate objects ( ";" predicate objects )*
+objects         ::= object ( "," object )*
+}|}
+
+Turtle also allows for the use of prefixed names instead of direct IRIs for resources, the following
+re-definitions for @tt{subject}, @tt{predicate}, and @tt{object} show this.
+
+@nested[#:style 'code-inset]{
+@verbatim|{
+subject         ::= resource | prefixed-name | blank-node
+predicate       ::= resource | prefixed-name
+object          ::= resource | prefixed-name | blank-node | literal
+prefixed-name   ::= prefix LOCAL_NAME?
+}|}
+
+The extension of Turtle into TriG is to add a graph identifier to wrap a set of Turtle statements so that
+multiple graphs can be serialized into the same resource.
+
+@nested[#:style 'code-inset]{
+@verbatim|{
+trig-dataset    ::= turtle-header trig-graph*
+trig-graph      ::= graph-name? "{"  turtle-content "}"
+}|}
+
+@deftogether[(
+@defproc[(write-turtle-nsmap
+          [val nsmap?]
+          [out output-port? (current-output-port)])
+         void?]
+@defproc[(nsmap->turtle-string
+          [val nsmap?])
+         void?]
+)]{
+Write a @racket[nsmap] to the provided output port, or to a string. This string will use Turtle syntax in the output.
+
+@examples[#:eval example-eval
+(require rdf/core/io
+         rdf/core/nsmap)
+
+(write-turtle-nsmap (make-common-nsmap))
+(displayln
+  (nsmap->turtle-string (make-common-nsmap)))
+]
+}
+
+@deftogether[(
+  @defproc[(write-turtle-graph
+            [val graph?]
+            [out output-port? (current-output-port)])
+           void?]
+  @defproc[(graph->turtle-string
+            [val graph?])
+           string?]
+)]{
+Write a @racket[graph?] to the provided output port, or to a string, in Turtle syntax.
+}
+
+@deftogether[(
+  @defproc[(write-trig-graph
+            [val graph?]
+            [out output-port? (current-output-port)])
+           void?]
+  @defproc[(graph->trig-string
+            [val graph?])
+           string?]
+)]{
+Write a @racket[graph?] to the provided output port, or to a string, in TriG syntax.
+}
+
+@deftogether[(
+  @defproc[(write-trig-dataset
+            [val dataset?]
+            [out output-port? (current-output-port)])
+           void?]
+  @defproc[(dataset->trig-string
+            [val dataset?])
+           string?]
+)]{
+Write a @racket[dataset?] to the provided output port, or to a string, in TriG syntax.
+}
+
+@;{============================================================================}
+@subsection[]{SPARQL Formatting}
+
+@deftogether[(
+@defproc[(write-sparql-nsmap
+          [val nsmap?]
+          [out output-port? (current-output-port)])
+         void?]
+@defproc[(nsmap->sparql-string
+          [val nsmap?])
+         void?]
+)]{
+Write a @racket[nsmap?] to the provided output port, or to a string. This string will use SPARQL syntax in the output.
+
+@examples[#:eval example-eval
+(require rdf/core/io
+         rdf/core/nsmap)
+
+(write-sparql-nsmap (make-common-nsmap))
+(displayln
+  (nsmap->sparql-string (make-common-nsmap)))
+]
+}
 
 @deftogether[(
   @defproc[(write-statement-pattern
-            [val dataset?]
+            [val statement-pattern?]
             [out output-port? (current-output-port)])
            void?]
   @defproc[(statement-pattern->string
-            [val dataset?]
-            [out output-port? (current-output-port)])
+            [val statement-pattern?])
            string?]
 )]{
+Write a @racket[statement-pattern?] to the provided output port, or to a string, in SPARQL syntax.
+}
+
+@;{============================================================================}
+@;{============================================================================}
+@section[#:style '(toc)]{Module schema}
+@defmodule[rdf/core/schema]
+
+This module provides a higher-level interface for creating RDF Schema graphs, accepting more @italic{raw} types which
+are converted, providing type-specific constructors with common properties as keyword arguments, and a method to convert
+a schema value into a set of statements.
+
+@nested[#:style figure-flow]{
+  @image["scribblings/core-schema-module-ov.svg"]
+
+  Schema Module Overview
+}
+
+@examples[#:eval example-eval
+(require rdf/core/graph
+         rdf/core/io
+         rdf/core/nsmap
+         rdf/core/resource
+         rdf/core/schema)
+
+(define example
+  (make-schema "http://example.com/ns/"
+               #:label "An example schema"
+
+               (assert 'version 2)
+               (class 'Identity)
+               (class 'Entity)
+               (class 'Campaign #:subClassOf 'Entity)
+               (class 'AdGroup #:subClassOf 'Entity)
+               (class 'Ad #:subClassOf 'Entity)
+
+               (property 'hasIdentity
+                         #:domain 'Entity
+                         #:range 'Identity)
+               (property 'hasDependentPart
+                         #:label "has dependent part")
+               (property 'hasIndependentPart
+                         #:label "has independent part")
+               (property 'hasGroup
+                         #:label "has group"
+                         #:subPropertyOf 'hasIndependentPart
+                         #:domain 'Campaign
+                         #:range 'AdGroup)
+               (property 'hasAd
+                         #:label "has ad"
+                         #:subPropertyOf 'hasIndependentPart
+                         #:domain 'AdGroup
+                         #:range 'Ad)))
+
+(let ((ns-map (make-common-nsmap)))
+   (nsmap-set-default! ns-map (string->resource "http://example.com/ns/"))
+   (write-ntriple-graph
+    (unnamed-graph (schema->statements example)
+                   ns-map)))
+]
+
+@local-table-of-contents[]
+
+@subsection[]{Schema Type}
+
+@nested[#:style figure-flow]{
+  @image["scribblings/core-schema-module-schemas.svg"]
+
+  Schema Module -- Schemas
+}
+
+@defthing[schema-base? contract?]{
+The base URI for the schema must be a @racket[url-absolute?] to allow resolution of relative names used for schema members.
+}
+
+@defthing[schema-member/c contract?]{
+A schema contains a list of members, each of which may be either a @racket[thing?] or an @racket[assertion].
+}
+
+@defstruct*[schema
+            ([base schema-base?]
+             [members (listof schema-member/c)])
+            #:omit-constructor]{
 TBD
 }
 
-@;{============================================================================}
-@;{============================================================================}
-@section[]{Module prelude}
-@defmodule[rdf/core/prelude]
-
-The @tt{prelude} package combines imports and re-exports the most commonly used structures and procedures in the full
-library.
-
-From package @racket[rdf/core/name]:
-
-@nested[#:style 'inset]{
-  @itemlist[
-    #:style compact-list
-    @item{@racket[local-name?]}
-    @item{@racket[string->local-name]}
-    @item{@racket[local-name->string]}
-  ]
+@defproc[#:kind "constructor"
+         (make-schema
+            [base (or/c string? schema-base?)]
+            [member schema-member/c] ...
+            [#:label label (or/c schema-object/c #f) #f]
+            [#:comment comment (or/c schema-object/c #f) #f])
+           schema?]{
+TBD
 }
 
-From package @racket[rdf/core/namespace]:
-
-@nested[#:style 'inset]{
-  @itemlist[
-    #:style compact-list
-    @item{@racket[namespace?]}
-    @item{@racket[url->namespace]}
-    @item{@racket[namespace->url]}
-    @item{@racket[nsname?]}
-    @item{@racket[nsname]}
-    @item{@racket[make-nsname]}
-    @item{@racket[nsname->url]}
-  ]
+@defproc[(schema->statements
+          [schema schema?])
+         (set/c statement?)]{
+TBD
 }
 
-From package @racket[rdf/core/nsmap]:
+@subsection[]{Things}
 
-@nested[#:style 'inset]{
-  @itemlist[
-    #:style compact-list
-    @item{@racket[prefix?]}
-    @item{@racket[string->prefix]}
-    @item{@racket[empty-prefix]}
-    @item{@racket[prefix->string]}
-    @item{@racket[prefixed-name?]}
-    @item{@racket[prefixed-name]}
-    @item{@racket[string->prefixed-name]}
-    @item{@racket[prefixed-name->string]}
-    @item{@racket[nsmap?]}
-    @item{@racket[nsmap-empty?]}
-    @item{@racket[make-nsmap]}
-    @item{@racket[nsmap-has-prefix?]}
-    @item{@racket[nsmap-has-default?]}
-    @item{@racket[nsmap-ref]}
-    @item{@racket[nsmap-ref-default]}
-    @item{@racket[nsmap-set!]}
-  ]
+The struct type @italic{thing} represents a named object about which assertions may be made. In fact, it is a mapping
+from a name (of type @racket[member-name/c]) to a list of @racket[assertion] values.
+
+@nested[#:style figure-flow]{
+  @image["scribblings/core-schema-module-things.svg"]
+
+  Schema Module -- Things
 }
 
-From package @racket[rdf/core/literal]:
-
-@nested[#:style 'inset]{
-  @itemlist[
-    #:style compact-list
-    @item{@racket[literal?]}
-    @item{@racket[literal-lexical-form]}
-    @item{@racket[literal-datatype-iri]}
-    @item{@racket[literal-language-tag]}
-    @item{@racket[make-untyped-literal]}
-    @item{@racket[make-typed-literal]}
-    @item{@racket[make-lang-string-literal]}
-  ]
+@defthing[member-name/c contract?]{
+A contract that defines the name of a schema member, where all @italic{things} are intended as schema members.
 }
 
-From package @racket[rdf/core/statement]:
-
-@nested[#:style 'inset]{
-  @itemlist[
-    #:style compact-list
-    @item{@racket[make-blank-node]}
-    @item{@racket[blank-node?]}
-    @item{@racket[subject?]}
-    @item{@racket[predicate?]}
-    @item{@racket[object?]}
-    @item{@racket[statement?]}
-    @item{@racket[get-subject]}
-    @item{@racket[get-predicate]}
-    @item{@racket[get-object]}
-  ]
+@defstruct*[thing
+            ([name member-name/c]
+             [assertions (listof assertion?)])
+            #:omit-constructor]{
+TBD
 }
 
-From package @racket[rdf/core/triple]:
-
-@nested[#:style 'inset]{
-  @itemlist[
-    #:style compact-list
-    @item{@racket[make-triple]}
-    @item{@racket[triple?]}
-    @item{@racket[subject?]}
-  ]
+@defproc[#:kind "constructor"
+         (individual
+            [name member-name/c]
+            [assertion assertion?] ...
+            [#:label label (or/c schema-object/c #f) #f]
+            [#:comment comment (or/c schema-object/c #f) #f])
+           thing?]{
+Create a new thing. This constructor has the fewest assumptions about the type, or structure, of a thing.
 }
 
-From package @racket[rdf/core/graph]:
-
-@nested[#:style 'inset]{
-  @itemlist[
-    #:style compact-list
-    @item{@racket[graph?]}
-    @item{@racket[unnamed-graph]}
-    @item{@racket[named-graph]}
-    @item{@racket[graph-named?]}
-    @item{@racket[graph-empty?]}
-    @item{@racket[graph-member?]}
-    @item{@racket[graph-add]}
-    @item{@racket[graph-add-all]}
-    @item{@racket[graph-remove]}
-    @item{@racket[graph-remove-all]}
-  ]
+@defproc[#:kind "constructor"
+         (resource
+            [name member-name/c]
+            [assertion assertion?] ...
+            [#:label label (or/c schema-object/c #f) #f]
+            [#:comment comment (or/c schema-object/c #f) #f]
+            [#:type type (or/c schema-subject/c #f) #f])
+           thing?]{
+This constructor creates an individual thing that is a RDF Schema @tt{Resource}, and may have a type.
 }
 
-From package @racket[rdf/core/quad]:
-
-@nested[#:style 'inset]{
-  @itemlist[
-    #:style compact-list
-    @item{@racket[quad?]}
-    @item{@racket[quad?]}
-    @item{@racket[statement->quad]}
-    @item{@racket[graph->quads]}
-  ]
+@defproc[#:kind "constructor"
+         (class
+            [name member-name/c]
+            [assertion assertion?] ...
+            [#:label label (or/c schema-object/c #f) #f]
+            [#:comment comment (or/c schema-object/c #f) #f]
+            [#:subClassOf super (or/c schema-subject/c #f) #f])
+           thing?]{
+This constructor creates an individual thing that is an RDF Schema @tt{Class}. The @racket[#:subClassOf] keyword allows the
+class hierarchy to be specified directly rather than with individual assertions.
 }
 
-From package @racket[rdf/core/dataset]:
-
-@nested[#:style 'inset]{
-  @itemlist[
-    #:style compact-list
-    @item{@racket[dataset?]}
-    @item{@racket[unnamed-dataset]}
-    @item{@racket[named-dataset]}
-    @item{@racket[dataset-empty?]}
-    @item{@racket[dataset-has-named?]}
-    @item{@racket[dataset-has-default?]}
-    @item{@racket[dataset-ref]}
-    @item{@racket[dataset-ref-default]}
-    @item{@racket[dataset-set!]}
-    @item{@racket[dataset-remove!]}
-  ]
+@defproc[#:kind "constructor"
+         (property
+            [name member-name/c]
+            [assertion assertion?] ...
+            [#:label label (or/c schema-object/c #f) #f]
+            [#:comment comment (or/c schema-object/c #f) #f]
+            [#:subPropertyOf super (or/c schema-subject/c #f) #f]
+            [#:domain domain (or/c schema-subject/c #f) #f]
+            [#:range range (or/c schema-subject/c #f) #f])
+           thing?]{
+This constructor creates an individual thing that is an RDF @tt{Property}. The @racket[#:subPropertyOf] keyword allows the
+property hierarchy to be specified directly rather than with individual assertions.
 }
 
-From package @racket[rdf/core/io]:
+@defproc[#:kind "constructor"
+         (datatype
+            [name member-name/c]
+            [assertion assertion?] ...
+            [#:label label (or/c schema-object/c #f) #f]
+            [#:comment comment (or/c schema-object/c #f) #f]
+            [#:restricts restricts (or/c schema-subject/c #f) #f])
+           thing?]{
+This constructor creates an individual thing that is an RDF Schema @t{datatype}.
+}
 
-@nested[#:style 'inset]{
-  @itemlist[
-    #:style compact-list
-    @item{@racket[write-ntriple-literal]}
-    @item{@racket[write-ntriple-statement]}
-    @item{@racket[write-ntriple-graph]}
-    @item{@racket[write-nquad-statement]}
-    @item{@racket[write-nquad-graph]}
-  ]
+@defthing[container-kind/c flat-contract?]{
+TBD
+}
+
+@defproc[#:kind "constructor"
+         (container
+            [name member-name/c]
+            [assertion assertion?] ...
+            [#:label label (or/c schema-object/c #f) #f]
+            [#:comment comment (or/c schema-object/c #f) #f]
+            [#:kind kind container-kind/c #f])
+           thing?]{
+This constructor creates an individual thing that is an RDF Schema @tt{Container}. Optionally the individual may be typed
+according to the @racket[container-kind/c] value of @racket['alt], @racket['bag], or @racket['seq].
+}
+
+@subsection[]{Assertions}
+
+An assertion is a statement about a thing, the subject of the RDF statement is the thing to which the assertion is attached.
+
+@nested[#:style figure-flow]{
+  @image["scribblings/core-schema-module-assertions.svg"]
+
+  Schema Module -- Assertions
+}
+
+@defthing[schema-subject-one/c contract?]{
+TBD
+}
+
+@defthing[schema-subject/c contract?]{
+TBD
+}
+
+@defthing[schema-predicate/c contract?]{
+TBD
+}
+
+@defthing[schema-object-one/c contract?]{
+TBD
+}
+
+@defthing[schema-object/c contract?]{
+TBD
+}
+
+@defstruct*[assertion
+            ([property schema-predicate/c]
+             [object schema-object-one/c])
+            #:omit-constructor]{
+TBD
+}
+
+@defproc[#:kind "constructor"
+         (assert
+          [property schema-predicate/c]
+          [object schema-object-one/c])
+         assertion?]{
+TBD
+}
+
+@defproc[#:kind "predicate"
+         (multi-valued-assertion?
+          [assertion assertion?])
+         boolean?]{
+TBD
+}
+
+@deftogether[(
+@defproc[(type
+          [val schema-object-one/c])
+         assertion?]
+@defproc[(a
+          [val schema-object-one/c])
+         assertion?]
+)]{
+Creates an assertion with the predicate @tt{rdf:type}. The procedure @racket[a] is a synonym for @racket[type]. The
+argument @racket[val] is @italic{usually} a resource reference (either member name or URL).
+}
+
+@defproc[(value
+          [val schema-object-one/c])
+         assertion?]{
+Creates an assertion with the predicate @tt{rdf:value}.  The argument @racket[val] is @italic{usually} a literal.
+}
+
+@defproc[(comment
+          [val schema-object-one/c])
+         assertion?]{
+Creates an assertion with the predicate @tt{rdfs:comment}. The argument @racket[val] is @italic{usually} a string literal
+with, or without, language tag.
+}
+
+@defproc[(is-defined-by
+          [val schema-object-one/c])
+         assertion?]{
+Creates an assertion with the predicate @tt{rdfs:isDefinedBy}. The argument @racket[val] is @italic{usually} a resource
+reference (either member name or URL).
+}
+
+@defproc[(label
+          [val schema-object-one/c])
+         assertion?]{
+Creates an assertion with the predicate @tt{rdfs:label}. The argument @racket[val] is @italic{usually} a string literal
+with, or without, language tag.
+}
+
+@defproc[(see-also
+          [val schema-object-one/c])
+         assertion?]{
+Creates an assertion with the predicate @tt{rdfs:seeAlso}. The argument @racket[val] is @italic{usually} a resource
+reference (either member name or URL).
 }
 
 @;{============================================================================}
 @;{============================================================================}
 @section[#:style '(toc)]{Vocabulary Modules}
 
+
+@nested[#:style figure-flow]{
+  @image["scribblings/v-module-overview.svg"]
+
+  Vocabulary Modules
+}
 
 These modules have a common, simple, naming convention:
 
@@ -2437,6 +3148,12 @@ creation of modules for other vocabularies.
 @;{============================================================================}
 @subsection[]{RDF}
 @defmodule[rdf/core/v/rdf]
+
+@nested[#:style figure-flow]{
+  @image["scribblings/vocab-rdf-module.svg"]
+
+  RDF Vocabulary Module Overview
+}
 
 @defthing[rdf-prefix-string prefix-string? #:value "rdf"]{The preferred, or common, prefix for this namespace as a @racket[string?].}
 
@@ -2888,7 +3605,7 @@ This package has the following type mapping:
 #:row-properties '(bottom-border ())
 #:column-properties '(top top)
 (list (list @bold{Racket type}      @bold{SPARQL production})
-      (list @racket[prefix-name?]   @tt{PNAME_NS})
+      (list @racket[prefix?]   @tt{PNAME_NS})
       (list @racket[local-name?]    @tt{PN_LOCAL})
       (list @racket[prefixed-name?] @tt{PrefixedName}))
 ]

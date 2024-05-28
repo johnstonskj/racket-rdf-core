@@ -11,8 +11,8 @@
 
 (require racket/contract
          racket/string
-         (only-in rdf/core/namespace
-                  string->namespace)
+         (only-in rdf/core/resource
+                  string->resource)
          (only-in rdf/core/nsmap
                   nsmap-set!
                   string->prefix))
@@ -26,7 +26,7 @@
 (define top-level-domain/c (or/c 'com 'edu 'net 'org))
 
 (define (example-namespace tld #:vocabulary (vocab-path #f))
-  (string->namespace
+  (string->resource
    (format "https://example.~a/~a"
            (symbol->string tld)
            (if vocab-path

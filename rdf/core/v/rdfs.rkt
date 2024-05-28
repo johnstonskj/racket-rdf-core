@@ -13,12 +13,13 @@
 
 (require (only-in "../name.rkt"
                   string->local-name)
-         (only-in "../namespace.rkt"
-                  string->namespace
-                  make-nsname)
          (only-in "../nsmap.rkt"
                   string->prefix
-                  nsmap-set!))
+                  nsmap-set!)
+         (only-in "../nsname.rkt"
+                  make-nsname)
+         (only-in "../resource.rkt"
+                  string->resource))
 
 (provide (all-defined-out))
 
@@ -29,12 +30,12 @@
 (define rdfs-prefix-string "rdfs")
 (define rdfs-namespace-string "http://www.w3.org/2000/01/rdf-schema#")
 
-(define rdfs: (string->namespace rdfs-namespace-string))
+(define rdfs: (string->resource rdfs-namespace-string))
 
 (define (nsmap-add-rdf-schema map)
   (nsmap-set! map
               (string->prefix rdfs-prefix-string)
-              (string->namespace rdfs-namespace-string)))
+              (string->resource rdfs-namespace-string)))
 
 ;; ================================================================================================
 ;; Name definitions
@@ -58,10 +59,10 @@
 (define rdfs:domain
   (make-nsname rdfs: (string->local-name "domain")))
 
-(define rdfs:sub-class-of
+(define rdfs:subClassOf
   (make-nsname rdfs: (string->local-name "subClassOf")))
 
-(define rdfs:sub-property-of
+(define rdfs:subPropertyOf
   (make-nsname rdfs: (string->local-name "subPropertyOf")))
 
 (define rdfs:label
@@ -79,8 +80,8 @@
 (define rdfs:member
   (make-nsname rdfs: (string->local-name "member")))
 
-(define rdfs:see-also
+(define rdfs:seeAlso
   (make-nsname rdfs: (string->local-name "seeAlso")))
 
-(define rdfs:is-defined-by
+(define rdfs:isDefinedBy
   (make-nsname rdfs: (string->local-name "isDefinedBy")))
