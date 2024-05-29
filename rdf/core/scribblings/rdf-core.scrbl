@@ -1979,6 +1979,25 @@ description and VOID vocabularies.
 @section[]{Module tree}
 @defmodule[rdf/core/tree]
 
+The following diagram demonstrates the structure of a graph tree, rather than representing the graph as a
+simple set of statements it turns the graph into a map of maps indexed initially by subject, then by predicate,
+and finally objects are collected into a set per statement-predicate path.
+
+@verbatim|{
+┌─root─┐      ┌─limb─┐     ┌branch┐     ┌──────────twigs────────────┐
+              ┌──────┐
+          ┌──▶│ sub1 ─▶    ┌──────┐
+          │   └──────┘ ┌──▶│ prd1 ─▶
+          │            │   └──────┘     ┌──────────────────────────
+┌──────┐  │   ┌──────┐ │   ┌──────┐     │┌──────┐┌──────┐┌──────┐
+│ tree ───┼──▶│ sub2 ──┼──▶│ prd2 ─────▶││ obj1 ││ obj1 ││ obj1 │┈┈
+└──────┘  │   └──────┘ │   └──────┘     │└──────┘└──────┘└──────┘
+          │            │   ┌──────┐     └──────────────────────────
+          │   ┌──────┐ └──▶│ sub3 ─▶
+          └──▶│ sub3 ─▶    └──────┘
+              └──────┘
+}|
+
 @nested[#:style figure-flow]{
   @image["scribblings/core-tree-module-ov.svg"]
 
@@ -1986,33 +2005,33 @@ description and VOID vocabularies.
 }
 
 @defthing[graph-tree-twigs/c contract?]{
-TBD
+The twigs of the tree are a set of @racket[object?] values.
 }
 
 @defthing[graph-tree-branch/c contract?]{
-TBD
+This is a mapping from a single @racket[predicate?] to a @racket[graph-tree-twigs/c] set.
 }
 
 @defthing[graph-tree/c contract?]{
-TBD
+This is a mapping from a single @racket[subject?] (limb) to a @racket[graph-tree-branch/c] map.
 }
 
 @defproc[(graph->tree
           [graph graph?])
          graph-tree/c]{
-TBD
+Returns a @racket[graph-tree/c] version of the provided @racket[graph?].
 }
 
 @defproc[(statements->tree
           [statements statement-set?])
          graph-tree/c]{
-TBD
+Returns a @racket[graph-tree/c] version of the provided @racket[statement-set?].
 }
 
 @defproc[(tree->statements
           [tree graph-tree/c])
          statement-set?]{
-TBD
+Returns a @racket[statement-set] version of the provided @racket[graph-tree/c?].
 }
 
 @;{============================================================================}
