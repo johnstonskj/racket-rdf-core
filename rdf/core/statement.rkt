@@ -32,11 +32,12 @@
                        (subject? (-> any/c boolean?))
                        (predicate? (-> any/c boolean?))
                        (object? (-> any/c boolean?))
-                       ;(subject-less-than? (-> subject? subject? boolean?))
-                       ;(predicate-less-than? (-> predicate? predicate? boolean?))
-                       ;(object-less-than? (-> object? object? boolean?))
+                       (subject<? (-> subject? subject? boolean?))
+                       (predicate<? (-> predicate? predicate? boolean?))
+                       (object<? (-> object? object? boolean?))
                        ;; --------------------------------------
                        (statement? (-> any/c boolean?))
+                       (statement<? (-> statement? statement? boolean?))
                        (get-subject (-> statement? subject?))
                        (get-predicate (-> statement? predicate?))
                        (get-object (-> statement? object?))
@@ -103,26 +104,25 @@
 
 (define object? (or/c resource? blank-node? literal?))
 
-;; (define (subject-less-than? v1 v2)
-;;   (cond
-;;     ((and (url-absolute? v1) (url-absolute? v2))
-;;      (string<? (url->string v1) (url->string v2)))
-;;     ((and (blank-node? v1) (blank-node? v2))
-;;      (blank-node<? (blank-node-label v1) (blank-node-label v2)))
-;;     (else #f)))
-;;
-;; (define (predicate-less-than? v1 v2)
-;;   (string<? (url->string v1) (url->string v2)))
-;;
-;; (define (object-less-than? v1 v2)
-;;   (cond
-;;     ((and (url-absolute? v1) (url-absolute? v2))
-;;      (string<? (url->string v1) (url->string v2)))
-;;     ((and (blank-node? v1) (blank-node? v2))
-;;      (blank-node<? (blank-node-label v1) (blank-node-label v2)))
-;;     ((and (literal? v1) (literal? v2))
-;;      (literal-less-than? v1 v2))
-;;     (else #f)))
+(define (subject<? v1 v2)
+  (cond
+    ((and (resource? v1) (resource? v2))
+     (resource<? v1 v2))
+    ((and (blank-node? v1) (blank-node? v2))
+     (blank-node<? v1 v2))
+    (else #f)))
+
+(define predicate<? resource<?)
+
+(define (object<? v1 v2)
+  (cond
+    ((and (resource? v1) (resource? v2))
+     (resource<? v1 v2))
+    ((and (blank-node? v1) (blank-node? v2))
+     (blank-node<? v1 v2))
+    ((and (literal? v1) (literal? v2))
+     (literal<? v1 v2))
+    (else #f)))
 
 ;; -------------------------------------------------------------------------------------------------
 ;; `statement` generic type
@@ -144,13 +144,12 @@
 
 (define statement-list? (listof statement?))
 
-;;(define (statement-less-than? v1 v2)
-;;  (if (and (statement? v1) (statement? v2))
-;;      (and
-;;       (subject-less-than? (get-subject v1) (get-subject v2))
-;;       (predicate-less-than? (get-predicate v1) (get-predicate v2))
-;;       (object-less-than? (get-object v1) (get-object v2)))
-;;      #f))
+(define (statement<? v1 v2)
+  (and (statement? v1)
+       (statement? v2)
+       (subject<? (get-subject v1) (get-subject v2))
+       (predicate<? (get-predicate v1) (get-predicate v2))
+       (object<? (get-object v1) (get-object v2))))
 
 ;; -------------------------------------------------------------------------------------------------
 

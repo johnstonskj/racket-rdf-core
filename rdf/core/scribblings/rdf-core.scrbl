@@ -606,6 +606,18 @@ Returns @racket[#t] if @racket[val] is a @racket[resource?] @bold{and} has no co
 ]
 }
 
+@defproc[#:kind "predicate"
+         (resource<? [v1 resource?] [v2 resource?]) boolean?]{
+Returns @racket[#t] if @racket[v1] and @racket[v2] are @racket[resource?] values, and @racket[v1] is
+@italic{lexigraphically} less than @racket[v2]. This is equivalent to the following:
+
+@racketblock[
+(string<?
+  (resource->string val1)
+  (resource->string val2))
+]
+}
+
 @;{============================================================================}
 @subsection[]{Resource Operations}
 
@@ -1271,6 +1283,13 @@ Returns true if this literal has a datatype URI @italic{and} that URI is in the 
 Returns true if this literal has a datatype URI @italic{and} that URI is @racket[equal?] to @racket{datatype}.
 }
 
+@defproc[#:kind "predicate"
+         (literal<? [v1 literal?] [v2 literal?]) boolean?]{
+Returns @racket[#t] if @racket[v1] and @racket[v2] are @racket[literal?] values, and @racket[v1] is
+@italic{lexigraphically} less than @racket[v2]. This test is applied to all three components of the literal,
+where these are optional the value @racket[#f] is ordered less than any string.
+}
+
 @;{============================================================================}
 @subsection[]{Conversion to Literal}
 
@@ -1410,11 +1429,11 @@ Returns the label of this blank node as a string.
 }
 
 @defproc[(blank-node<?
-          [val1 blank-node?]
-          [val2 blank-node?])
+          [v1 blank-node?]
+          [v2 blank-node?])
          string?]{
-Returns @racket[#t] if blank-node @racket[val1] is less than @racket[val2] using the labels for comparison. This is
-equivalent to the following:
+Returns @racket[#t] if @racket[v1] and @racket[v2] are @racket[blank-node?] values, and @racket[v1] is less
+than @racket[v2] using the labels for comparison. This is equivalent to the following:
 
 @racketblock[
 (string<?
@@ -1452,6 +1471,12 @@ A statement's subject may be a @racket[resource?] or a @racket[blank-node?].
 }
 
 @defproc[#:kind "predicate"
+         (subject<? [v1 subject?] [v2 subject?]) boolean?]{
+Returns @racket[#t] if @racket[v1] and @racket[v2] are @racket[subject?] values, and @racket[v1] is less
+than @racket[v2].
+}
+
+@defproc[#:kind "predicate"
          (predicate?
           [val any/c])
          boolean?]{
@@ -1459,10 +1484,22 @@ A statement's predicate must be a @racket[resource?].
 }
 
 @defproc[#:kind "predicate"
+         (predicate<? [v1 predicate?] [v2 predicate?]) boolean?]{
+Returns @racket[#t] if @racket[v1] and @racket[v2] are @racket[predicate?] values, and @racket[v1] is
+less than @racket[v2].
+}
+
+@defproc[#:kind "predicate"
          (object?
           [val any/c])
          boolean?]{
 A statement's object may be either a @racket[resource?], @racket[blank-node?], or a @racket[literal?].
+}
+
+@defproc[#:kind "predicate"
+         (object<? [v1 object?] [v2 object?]) boolean?]{
+Returns @racket[#t] if @racket[v1] and @racket[v2] are @racket[object?] values, and @racket[v1] is less
+than @racket[v2].
 }
 
 @;{============================================================================}
@@ -1514,6 +1551,12 @@ The generic interface @racket[gen:statement] has the following methods:
   Return the @italic{object} component of the @racket[statement] structure.
   }
 
+}
+
+@defproc[#:kind "predicate"
+         (statement<? [v1 statement?] [v2 statement?]) boolean?]{
+Returns @racket[#t] if @racket[v1] and @racket[v2] are @racket[statement?] values, and @racket[v1] is
+less than @racket[v2].
 }
 
 @;{============================================================================}
@@ -1577,6 +1620,12 @@ Convert a list of three components into a triple structure. This is the opposite
           [stmt statement?])
          (set/c triple?)]{
 TBD
+}
+
+@defproc[#:kind "predicate"
+         (triple<? [v1 triple?] [v2 triple?]) boolean?]{
+Returns @racket[#t] if @racket[v1] and @racket[v2] are @racket[triple?] values, and @racket[v1] is
+less than @racket[v2].
 }
 
 @;{============================================================================}
@@ -1998,6 +2047,12 @@ TBD
           [graph graph?])
          (listof quad?)]{
 TBD
+}
+
+@defproc[#:kind "predicate"
+         (quad<? [v1 quad?] [v2 quad?]) boolean?]{
+Returns @racket[#t] if @racket[v1] and @racket[v2] are @racket[quad] values, and @racket[v1]
+is less than @racket[v2].
 }
 
 @;{============================================================================}

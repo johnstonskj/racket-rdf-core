@@ -15,6 +15,7 @@
                         (-> (list/c subject? predicate? object?) triple?))
                        (statement->reified-triples
                         (->* (statement?) ((or/c subject? #f)) (set/c triple?)))
+                       (rename statement<? triple<? (-> triple? triple? boolean?))
                        ;; --------------------------------------
                        (make-triple
                         (-> (or/c subject? string?)
@@ -48,14 +49,10 @@
 
 (struct triple (subject predicate object)
   #:transparent
-  #:guard (struct-guard/c subject? predicate? object?)
   #:methods gen:statement
   ((define (get-subject triple) (triple-subject triple))
    (define (get-predicate triple) (triple-predicate triple))
    (define (get-object triple) (triple-object triple))))
-
-(define (type-statement subject type)
-  (triple subject rdf:type type))
 
 (define (list->triple stmt)
   (apply triple stmt))
@@ -97,6 +94,9 @@
 ;; -------------------------------------------------------------------------------------------------
 ;; Additional Constructors
 ;; -------------------------------------------------------------------------------------------------
+
+(define (type-statement subject type)
+  (triple subject rdf:type type))
 
 (define (statement-add-to-subject stmt predicate object)
   (triple (get-subject stmt) predicate object))

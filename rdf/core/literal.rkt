@@ -3,6 +3,7 @@
 (require racket/bool
          racket/contract
          racket/date
+         racket/function
          racket/string
          ;; --------------------------------------
          langtag
@@ -26,7 +27,7 @@
                        (has-language-tag? (-> literal? boolean?))
                        (has-xsd-datatype? (-> literal? boolean?))
                        (is-a? (-> literal? resource-absolute? boolean?))
-                       (literal-less-than? (-> literal? literal? boolean?))
+                       (literal<? (-> literal? literal? boolean?))
                        ;; --------------------------------------
                        (boolean->literal (-> boolean? literal?))
                        (bytes->literal (-> bytes? literal?))
@@ -70,6 +71,11 @@
 ;; Literal predicates
 ;; ------------------------------------------------------------------------------------------------
 
+(define (maybe-false<? v1 v2 less-than?)
+  (if (and v1 v2) (less-than? v1 v2) (false? v1)))
+
+;; - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+
 (define (has-datatype-iri? val)
   (not (false? (literal-datatype-iri val))))
 
@@ -86,13 +92,15 @@
 (define (is-a? val datatype)
   (equal? (literal-datatype-iri val) datatype))
 
-(define (literal-less-than? v1 v2)
-  (andmap string<?
-          (list (list (literal-lexical-form v1)
-                      (literal-lexical-form v2))
-                (list (resource->string (literal-datatype-iri v1))
-                      (resource->string (literal-datatype-iri v2))
-                      (list (literal-language-tag v1) (literal-language-tag v2))))))
+(define (literal<? v1 v2)
+  (and (string<? (literal-lexical-form v1)
+                 (literal-lexical-form v1))
+       (maybe-false<? (literal-datatype-iri v1)
+                      (literal-datatype-iri v1)
+                      resource<?)
+       (maybe-false<? (literal-language-tag v1)
+                      (literal-language-tag v1)
+                      string<?)))
 
 ;; ------------------------------------------------------------------------------------------------
 ;; Literal conversions

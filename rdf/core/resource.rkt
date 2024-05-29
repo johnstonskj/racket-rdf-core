@@ -44,6 +44,7 @@
                        (rename combine-url/relative combine-resource/relative
                                (-> resource? string? resource?))
                        ;; --------------------------------------
+                       (resource<? (-> resource? resource? boolean?))
                        (resource-absolute? (-> any/c boolean?))
                        (resource-maybe-namespace? (-> any/c boolean?))
                        (resource-maybe-nsname? (-> any/c boolean?))
@@ -63,6 +64,11 @@
 ;; -------------------------------------------------------------------------------------------------
 
 (define resource? url?)
+
+(define (resource<? r1 r2)
+  (and (url? r1)
+       (url? r2)
+       (string=? (url->string r1) (url->string r2))))
 
 (define (resource-absolute? url)
   (and (url? url)
